@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>集團間數核對表 - 登記</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>集團間數申報</h1>
+            <p>請填寫今日各館別房間數據</p>
+        </header>
+        <form id="reportForm">
+            <div class="form-group">
+                <label for="reportDate">申報日期</label>
+                <input type="date" id="reportDate" required>
+            </div>
+            <div class="form-group">
+                <label for="branch">館別</label>
+                <select id="branch" required>
+                    <option value="" disabled selected>請選擇館別</option>
+                    <option value="雅霖">雅霖</option>
+                    <option value="豐家">豐家</option>
+                    <option value="豐國">豐國</option>
+                    <option value="豐谷">豐谷</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="staffName">姓名</label>
+                <input type="text" id="staffName" placeholder="請輸入您的姓名" required>
+            </div>
+            <div class="form-group">
+                <label for="checkoutRooms">退房間數</label>
+                <input type="number" id="checkoutRooms" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="stayRooms">續住間數</label>
+                <input type="number" id="stayRooms" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="restRooms">休息間數</label>
+                <input type="number" id="restRooms" min="0" required>
+            </div>
+            <div class="form-group">
+                <label for="remarks">備註欄</label>
+                <textarea id="remarks" rows="3" placeholder="選填..."></textarea>
+            </div>
+            <button type="submit" id="submitBtn">送出申報</button>
+        </form>
+    </div>
+    
+    <!-- 成功彈窗 -->
+    <div id="successModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="success-icon">✓</div>
+            <h2>申報成功</h2>
+            <p>辛苦了！</p>
+            <button id="closeModalBtn" class="btn-secondary">關閉</button>
+        </div>
+    </div>
+
+    <!-- 載入中遮罩 -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p>處理中...</p>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>集團間數核對表 - 管理員後台</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body class="admin-body">
+    <div class="admin-container">
+        <!-- 登入區塊 -->
+        <div id="loginSection" class="login-box">
+            <h1>管理員登入</h1>
+            <p>請使用 Google 帳號登入以查看核對表</p>
+            <div id="g_id_onload"
+                 data-context="signin"
+                 data-ux_mode="popup"
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-shape="rectangular"
+                 data-theme="outline"
+                 data-text="signin_with"
+                 data-size="large"
+                 data-logo_alignment="left">
+            </div>
+        </div>
+
+        <!-- 儀表板區塊 -->
+        <div id="dashboardSection" class="dashboard hidden">
+            <header class="dashboard-header">
+                <div>
+                    <h1>集團間數稽核</h1>
+                    <p>管理員：<span id="adminName"></span></p>
+                </div>
+                <button id="logoutBtn" class="btn-secondary">登出</button>
+            </header>
+
+            <div class="controls">
+                <div class="form-group">
+                    <label for="filterDate">選擇稽核日期：</label>
+                    <input type="date" id="filterDate">
+                </div>
+                <button id="fetchDataBtn">查詢</button>
+            </div>
+
+            <div id="resultsContainer" class="results-grid">
+                <!-- 結果卡片將由 JS 動態產生 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 載入中遮罩 -->
+    <div id="adminLoadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p>資料讀取中...</p>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
