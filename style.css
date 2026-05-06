@@ -95,6 +95,7 @@ label {
 
 input, select, textarea {
     width: 100%;
+    max-width: 100%; /* 防止超出父容器 */
     padding: 12px 16px;
     border: 2px solid var(--border-color);
     border-radius: 12px;
@@ -390,14 +391,33 @@ button:active {
 .nav-link {
     display: inline-block;
     margin-top: 12px;
+    padding: 10px 20px;
     font-size: 0.95rem;
+    color: var(--primary-color);
+    background-color: var(--bg-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 24px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.nav-link:hover {
+    color: #ffffff;
+    background-color: var(--primary-color);
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(139, 163, 158, 0.3);
+}
+
+.nav-link-inline {
     color: var(--primary-color);
     text-decoration: none;
     font-weight: 500;
     transition: var(--transition);
 }
 
-.nav-link:hover {
+.nav-link-inline:hover {
     color: var(--primary-hover);
     text-decoration: underline;
 }
