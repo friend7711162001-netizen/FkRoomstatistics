@@ -6,7 +6,7 @@
     <title>集團間數核對表 - 管理員後台</title>
     <link rel="stylesheet" href="style.css">
     <!-- Google Identity Services -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://accounts.google.com/gsi/client?onload=onGoogleLibraryLoad" async defer></script>
 </head>
 <body class="admin-body">
     <div class="admin-container">
@@ -14,20 +14,8 @@
         <div id="loginSection" class="login-box">
             <h1>管理員登入</h1>
             <p>請使用 Google 帳號登入以查看核對表</p>
-            <div id="g_id_onload"
-                 data-context="signin"
-                 data-ux_mode="popup"
-                 data-callback="handleCredentialResponse"
-                 data-auto_prompt="false">
-            </div>
-            <div class="g_id_signin"
-                 data-type="standard"
-                 data-shape="rectangular"
-                 data-theme="outline"
-                 data-text="signin_with"
-                 data-size="large"
-                 data-logo_alignment="left">
-            </div>
+            <a href="index.html" class="nav-link" style="display: block; margin-bottom: 24px;">👈 返回登記頁面</a>
+            <div id="buttonDiv" style="display: flex; justify-content: center;"></div>
         </div>
 
         <!-- 儀表板區塊 -->
@@ -35,7 +23,7 @@
             <header class="dashboard-header">
                 <div>
                     <h1>集團間數稽核</h1>
-                    <p>管理員：<span id="adminName"></span></p>
+                    <p>管理員：<span id="adminName"></span> | <a href="index.html" class="nav-link" style="margin-top: 0;">👈 返回登記頁面</a></p>
                 </div>
                 <button id="logoutBtn" class="btn-secondary">登出</button>
             </header>

@@ -18,6 +18,35 @@ function doGet(e) {
   try {
     const action = e.parameter.action;
     
+    if (action === 'checkAdmin') {
+      const emailToCheck = e.parameter.email;
+      const adminSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("管理員");
+      
+      if (!adminSheet) {
+        return createJsonResponse({ status: 'error', message: '找不到名稱為「管理員」的工作表' });
+      }
+      
+      const data = adminSheet.getDataRange().getValues();
+      let isAuthorized = false;
+      let adminName = "";
+      
+      // 第一列是標題：姓名, 帳號
+      for (let i = 1; i < data.length; i++) {
+        const rowEmail = String(data[i][1]).trim().toLowerCase();
+        if (rowEmail === String(emailToCheck).trim().toLowerCase()) {
+          isAuthorized = true;
+          adminName = data[i][0];
+          break;
+        }
+      }
+      
+      return createJsonResponse({ 
+        status: 'success', 
+        isAuthorized: isAuthorized, 
+        name: adminName 
+      });
+    }
+
     if (action === 'get') {
       const targetDate = e.parameter.date; // 格式預期為 "YYYY-MM-DD"
       const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);

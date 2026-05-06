@@ -1,32 +1,49 @@
 let currentUser = null;
 
 // Google Identity Services 登入回呼
-function handleCredentialResponse(response) {
+async function handleCredentialResponse(response) {
     // 這裡的 response.credential 是 JWT token
     const responsePayload = parseJwt(response.credential);
     const userEmail = responsePayload.email;
 
-    // 檢查信箱是否在允許清單內 (如果有設定的話)
-    if (CONFIG.ALLOWED_ADMIN_EMAILS && CONFIG.ALLOWED_ADMIN_EMAILS.length > 0) {
-        if (!CONFIG.ALLOWED_ADMIN_EMAILS.includes(userEmail)) {
-            alert('抱歉，此帳號沒有管理員權限。');
-            return;
+    // 將 UI 切換為載入中
+    const adminLoadingOverlay = document.getElementById('adminLoadingOverlay');
+    adminLoadingOverlay.classList.remove('hidden');
+
+    try {
+        // 向 GAS 驗證是否為管理員
+        const url = `${CONFIG.GAS_WEB_APP_URL}?action=checkAdmin&email=${encodeURIComponent(userEmail)}&t=${new Date().getTime()}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.status === 'success' && data.isAuthorized) {
+            currentUser = responsePayload;
+            // 使用試算表上設定的名字，若無則用 Google 帳號的名字
+            document.getElementById('adminName').textContent = data.name || currentUser.name;
+            
+            // 切換介面
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+
+            // 預設填入今日日期
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('filterDate').value = `${yyyy}-${mm}-${dd}`;
+        } else {
+            alert('抱歉，您的帳號 (' + userEmail + ') 不在管理員名單中。');
+            // 嘗試撤銷授權
+            if(google && google.accounts && google.accounts.id) {
+                 google.accounts.id.disableAutoSelect();
+            }
         }
+    } catch (error) {
+        console.error('Fetch Error:', error);
+        alert('驗證身分時發生錯誤：' + error.message);
+    } finally {
+        adminLoadingOverlay.classList.add('hidden');
     }
-
-    currentUser = responsePayload;
-    document.getElementById('adminName').textContent = currentUser.name;
-    
-    // 切換介面
-    document.getElementById('loginSection').classList.add('hidden');
-    document.getElementById('dashboardSection').classList.remove('hidden');
-
-    // 預設填入今日日期
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    document.getElementById('filterDate').value = `${yyyy}-${mm}-${dd}`;
 }
 
 // 解析 JWT
@@ -39,16 +56,25 @@ function parseJwt(token) {
     return JSON.parse(jsonPayload);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    // 初始化 Google Sign-in
+window.onGoogleLibraryLoad = function () {
     if (CONFIG.GOOGLE_CLIENT_ID && !CONFIG.GOOGLE_CLIENT_ID.includes("請在此填入")) {
-        const gsiElement = document.getElementById('g_id_onload');
-        if(gsiElement) {
-            gsiElement.setAttribute('data-client_id', CONFIG.GOOGLE_CLIENT_ID);
-        }
+        google.accounts.id.initialize({
+            client_id: CONFIG.GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse
+        });
+        // 渲染按鈕
+        google.accounts.id.renderButton(
+            document.getElementById("buttonDiv"),
+            { theme: "outline", size: "large", type: "standard", shape: "rectangular" }
+        );
+        // 啟用 One Tap (一鍵登入)，提升登入速度體驗
+        google.accounts.id.prompt();
     } else {
         console.warn("未設定 GOOGLE_CLIENT_ID。若要正常登入，請在 config.js 中設定。");
     }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
 
     const logoutBtn = document.getElementById('logoutBtn');
     const fetchDataBtn = document.getElementById('fetchDataBtn');

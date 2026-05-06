@@ -100,9 +100,15 @@ input, select, textarea {
     border-radius: 12px;
     font-size: 1rem;
     color: var(--text-main);
-    background-color: #FCFAxF8;
+    background-color: #FCFAF8;
     transition: var(--transition);
     outline: none;
+}
+
+/* 修復 iOS 日期與純文字輸入框的預設樣式問題 */
+input[type="date"], input[type="text"], input[type="number"], textarea {
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 input:focus, select:focus, textarea:focus {
@@ -379,4 +385,19 @@ button:active {
     .dashboard-header h1 {
         text-align: center;
     }
+}
+
+.nav-link {
+    display: inline-block;
+    margin-top: 12px;
+    font-size: 0.95rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.nav-link:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
 }
