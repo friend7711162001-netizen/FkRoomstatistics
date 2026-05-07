@@ -27,39 +27,63 @@
                 <button id="logoutBtn" class="btn-secondary">登出</button>
             </header>
 
-            <div class="controls" style="margin-bottom: 16px;">
-                <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                    <label for="filterDate">選擇稽核日期：</label>
-                    <input type="date" id="filterDate">
+            <!-- 分頁切換按鈕 -->
+            <div class="tab-container" style="margin-top: 20px;">
+                <button class="tab-btn active" data-tab="audit">數據稽核</button>
+                <button class="tab-btn" data-tab="history">歷史調閱 (館別分組)</button>
+            </div>
+
+            <!-- 數據稽核分頁內容 -->
+            <div id="auditTab" class="tab-content active">
+                <div class="controls" style="margin-bottom: 16px; margin-top: 20px;">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label for="filterDate">選擇稽核日期：</label>
+                        <input type="date" id="filterDate">
+                    </div>
+                </div>
+
+                <div class="expected-totals" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; background: var(--bg-color); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div style="font-weight: 600; grid-column: 1 / -1; color: var(--primary-color);">填寫系統總間數</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">雅霖:</label>
+                        <input type="number" id="expect-雅霖" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐家:</label>
+                        <input type="number" id="expect-豐家" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐國:</label>
+                        <input type="number" id="expect-豐國" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐谷:</label>
+                        <input type="number" id="expect-豐谷" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 30px;">
+                    <button id="fetchDataBtn" style="width: 100%;">開始稽核查詢</button>
+                </div>
+
+                <div id="resultsContainer" class="results-grid">
+                    <!-- 稽核卡片將由 JS 動態產生 -->
                 </div>
             </div>
 
-            <div class="expected-totals" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; background: var(--bg-color); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color);">
-                <div style="font-weight: 600; grid-column: 1 / -1; color: var(--primary-color);">填寫系統總間數</div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">雅霖:</label>
-                    <input type="number" id="expect-雅霖" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
+            <!-- 歷史調閱分頁內容 -->
+            <div id="historyTab" class="tab-content">
+                <div class="controls" style="margin-bottom: 24px; margin-top: 20px;">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label for="historyDate">選擇調閱日期：</label>
+                        <input type="date" id="historyDate">
+                    </div>
+                    <button id="fetchHistoryBtn" style="margin-top: 10px; width: 100%;">讀取歷史紀錄</button>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐家:</label>
-                    <input type="number" id="expect-豐家" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐國:</label>
-                    <input type="number" id="expect-豐國" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐谷:</label>
-                    <input type="number" id="expect-豐谷" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
-                </div>
-            </div>
 
-            <div style="margin-bottom: 30px;">
-                <button id="fetchDataBtn" style="width: 100%;">查詢</button>
-            </div>
-
-            <div id="resultsContainer" class="results-grid">
-                <!-- 結果卡片將由 JS 動態產生 -->
+                <div id="historyContainer">
+                    <div class="no-data">請選擇日期並點擊按鈕讀取</div>
+                </div>
             </div>
         </div>
     </div>

@@ -445,3 +445,110 @@ button:active {
     align-items: center;
     gap: 6px;
 }
+
+/* 分頁標籤樣式 */
+.tab-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0;
+}
+
+.tab-btn {
+    padding: 10px 24px;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: var(--transition);
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    border-bottom: 3px solid var(--primary-color);
+}
+
+.tab-btn:hover:not(.active) {
+    color: var(--primary-hover);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* 歷史調閱分組樣式 */
+.history-group {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 24px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.history-group-title {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    padding: 12px 20px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.history-table-container {
+    overflow-x: auto;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.history-table th {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    text-align: left;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+/* 讓數字欄位的標題也置中 */
+.history-table th.cell-num {
+    text-align: center;
+}
+
+.history-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    color: var(--text-main);
+}
+
+.history-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* 總計列樣式 */
+.history-table .total-row {
+    background-color: var(--bg-color);
+}
+
+.history-table .total-row td {
+    font-weight: 700;
+    color: var(--primary-color);
+    border-top: 2px solid var(--border-color);
+}
+
+.history-table .cell-name { font-weight: 600; }
+.history-table .cell-num { text-align: center; }
+.history-table .cell-time { color: var(--text-light); font-size: 0.8rem; }
+.history-table .cell-remarks { font-size: 0.85rem; color: #666; min-width: 150px; }

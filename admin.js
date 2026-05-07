@@ -30,7 +30,9 @@ async function handleCredentialResponse(response) {
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const dd = String(today.getDate()).padStart(2, '0');
-            document.getElementById('filterDate').value = `${yyyy}-${mm}-${dd}`;
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('filterDate').value = todayStr;
+            document.getElementById('historyDate').value = todayStr;
         } else {
             alert('抱歉，您的帳號 (' + userEmail + ') 不在管理員名單中。');
             // 嘗試撤銷授權
@@ -78,9 +80,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const logoutBtn = document.getElementById('logoutBtn');
     const fetchDataBtn = document.getElementById('fetchDataBtn');
+    const fetchHistoryBtn = document.getElementById('fetchHistoryBtn'); // 歷史調閱按鈕
     const filterDateInput = document.getElementById('filterDate');
+    const historyDateInput = document.getElementById('historyDate'); // 歷史調閱日期
     const resultsContainer = document.getElementById('resultsContainer');
+    const historyContainer = document.getElementById('historyContainer');
     const adminLoadingOverlay = document.getElementById('adminLoadingOverlay');
+
+    // 分頁切換邏輯
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.getAttribute('data-tab');
+            
+            // 切換按鈕狀態
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // 切換內容顯示
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === `${tabId}Tab`) {
+                    content.classList.add('active');
+                }
+            });
+        });
+    });
 
     const detailsModal = document.getElementById('detailsModal');
     const closeDetailsBtn = document.getElementById('closeDetailsBtn');
@@ -147,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 查詢資料
+    // 數據稽核查詢
     fetchDataBtn.addEventListener('click', async () => {
         const targetDate = filterDateInput.value;
         if (!targetDate) {
@@ -176,7 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 使用 GET 向 GAS 索取資料
-            // 為了避免 GAS 快取，可以加上 timestamp
             let url = `${CONFIG.GAS_WEB_APP_URL}?action=get&date=${encodeURIComponent(targetDate)}&t=${new Date().getTime()}`;
             
             if (saveSys) {
@@ -193,11 +219,40 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.status === 'success') {
                 renderResults(data.data, targetDate);
                 
-                // 查詢且渲染完成後，清空輸入框 (不保留記憶)
+                // 查詢且渲染完成後，清空輸入框
                 document.getElementById('expect-雅霖').value = '';
                 document.getElementById('expect-豐家').value = '';
                 document.getElementById('expect-豐國').value = '';
                 document.getElementById('expect-豐谷').value = '';
+            } else {
+                throw new Error(data.message || '取得資料失敗');
+            }
+        } catch (error) {
+            console.error('Fetch Error:', error);
+            alert('無法取得資料：' + error.message);
+        } finally {
+            adminLoadingOverlay.classList.add('hidden');
+        }
+    });
+
+    // 歷史調閱查詢 (獨立)
+    fetchHistoryBtn.addEventListener('click', async () => {
+        const targetDate = historyDateInput.value;
+        if (!targetDate) {
+            alert('請選擇日期！');
+            return;
+        }
+
+        adminLoadingOverlay.classList.remove('hidden');
+        historyContainer.innerHTML = '';
+
+        try {
+            const url = `${CONFIG.GAS_WEB_APP_URL}?action=get&date=${encodeURIComponent(targetDate)}&t=${new Date().getTime()}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                renderHistory(data.data);
             } else {
                 throw new Error(data.message || '取得資料失敗');
             }
@@ -315,5 +370,113 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         window.currentStats = stats;
+    }
+
+    // 渲染歷史調閱分頁 (依照館別分組)
+    function renderHistory(records) {
+        if (records.length === 0) {
+            historyContainer.innerHTML = `
+                <div class="no-data">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">📄</div>
+                    <p>本日無任何申報資料</p>
+                </div>
+            `;
+            return;
+        }
+
+        const branches = ["雅霖", "豐家", "豐國", "豐谷"];
+        const groupedData = {};
+        branches.forEach(b => groupedData[b] = []);
+
+        // 將資料分組
+        records.forEach(row => {
+            if (groupedData[row.branch]) {
+                groupedData[row.branch].push(row);
+            } else {
+                // 如果有非預期的館別
+                if (!groupedData[row.branch]) groupedData[row.branch] = [];
+                groupedData[row.branch].push(row);
+            }
+        });
+
+        let historyHtml = '';
+
+        // 依照館別順序產生表格
+        Object.keys(groupedData).forEach(branch => {
+            const branchRecords = groupedData[branch];
+            if (branchRecords.length === 0) return;
+
+            // 計算該館別總計
+            const branchTotal = branchRecords.reduce((acc, r) => {
+                acc.checkout += parseInt(r.checkoutRooms) || 0;
+                acc.stay += parseInt(r.stayRooms) || 0;
+                acc.rest += parseInt(r.restRooms) || 0;
+                return acc;
+            }, { checkout: 0, stay: 0, rest: 0 });
+
+            // 產生該館別的區塊
+            historyHtml += `
+                <div class="history-group">
+                    <div class="history-group-title">【${branch}】 歷史紀錄明細</div>
+                    <div class="history-table-container">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>姓名</th>
+                                    <th class="cell-num">退房</th>
+                                    <th class="cell-num">續住</th>
+                                    <th class="cell-num">休息</th>
+                                    <th>備註</th>
+                                    <th>上傳時間</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${branchRecords.map(r => `
+                                    <tr>
+                                        <td class="cell-name">${r.staffName}</td>
+                                        <td class="cell-num">${r.checkoutRooms}</td>
+                                        <td class="cell-num">${r.stayRooms}</td>
+                                        <td class="cell-num">${r.restRooms}</td>
+                                        <td class="cell-remarks">${r.remarks || '-'}</td>
+                                        <td class="cell-time">${formatDateTime(r.uploadTime)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                            <tfoot>
+                                <tr class="total-row">
+                                    <td class="cell-name">館別總計</td>
+                                    <td class="cell-num">${branchTotal.checkout}</td>
+                                    <td class="cell-num">${branchTotal.stay}</td>
+                                    <td class="cell-num">${branchTotal.rest}</td>
+                                    <td colspan="2" style="text-align: right; color: var(--primary-color); font-weight: 600;">
+                                        三項合計：${branchTotal.checkout + branchTotal.stay + branchTotal.rest} 間
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        historyContainer.innerHTML = historyHtml || '<p class="no-data">無資料</p>';
+    }
+
+    // 時間格式化輔助函式
+    function formatDateTime(dateStr) {
+        if (!dateStr) return '-';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const hh = String(d.getHours()).padStart(2, '0');
+            const min = String(d.getMinutes()).padStart(2, '0');
+            const ss = String(d.getSeconds()).padStart(2, '0');
+            return `${yyyy}/${mm}/${dd} ${hh}:${min}:${ss}`;
+        } catch (e) {
+            return dateStr;
+        }
     }
 });
