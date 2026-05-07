@@ -14,8 +14,7 @@
         <div id="loginSection" class="login-box">
             <h1>管理員登入</h1>
             <p>請使用 Google 帳號登入以查看核對表</p>
-            <a href="index.html" class="nav-link" style="display: block; margin-bottom: 24px;">👈 返回登記頁面</a>
-            <div id="buttonDiv" style="display: flex; justify-content: center;"></div>
+            <div id="buttonDiv" style="display: flex; justify-content: center; margin-top: 24px;"></div>
         </div>
 
         <!-- 儀表板區塊 -->
@@ -23,22 +22,55 @@
             <header class="dashboard-header">
                 <div>
                     <h1>集團間數稽核</h1>
-                    <p>管理員：<span id="adminName"></span> | <a href="index.html" class="nav-link-inline">👈 返回登記頁面</a></p>
+                    <p>管理員：<span id="adminName"></span></p>
                 </div>
                 <button id="logoutBtn" class="btn-secondary">登出</button>
             </header>
 
-            <div class="controls">
-                <div class="form-group">
+            <div class="controls" style="margin-bottom: 16px;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
                     <label for="filterDate">選擇稽核日期：</label>
                     <input type="date" id="filterDate">
                 </div>
-                <button id="fetchDataBtn">查詢</button>
+            </div>
+
+            <div class="expected-totals" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; background: var(--bg-color); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color);">
+                <div style="font-weight: 600; grid-column: 1 / -1; color: var(--primary-color);">填寫系統總間數</div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">雅霖:</label>
+                    <input type="number" id="expect-雅霖" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐家:</label>
+                    <input type="number" id="expect-豐家" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐國:</label>
+                    <input type="number" id="expect-豐國" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐谷:</label>
+                    <input type="number" id="expect-豐谷" min="0" placeholder="間" style="padding: 8px;" autocomplete="off">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <button id="fetchDataBtn" style="width: 100%;">查詢</button>
             </div>
 
             <div id="resultsContainer" class="results-grid">
                 <!-- 結果卡片將由 JS 動態產生 -->
             </div>
+        </div>
+    </div>
+
+    <!-- 詳細資訊彈窗 -->
+    <div id="detailsModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 600px; width: 95%; padding: 24px;">
+            <h2 id="detailsModalTitle" style="margin-bottom: 20px; color: var(--primary-color);"></h2>
+            <div id="detailsModalBody" style="text-align: left; max-height: 60vh; overflow-y: auto;">
+            </div>
+            <button id="closeDetailsBtn" class="btn-secondary" style="margin-top: 20px;">關閉</button>
         </div>
     </div>
 

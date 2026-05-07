@@ -82,6 +82,58 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsContainer = document.getElementById('resultsContainer');
     const adminLoadingOverlay = document.getElementById('adminLoadingOverlay');
 
+    const detailsModal = document.getElementById('detailsModal');
+    const closeDetailsBtn = document.getElementById('closeDetailsBtn');
+    
+    // 關閉彈窗
+    if (closeDetailsBtn) {
+        closeDetailsBtn.addEventListener('click', () => {
+            detailsModal.classList.add('hidden');
+        });
+    }
+
+    // 委派點擊事件給詳細資訊按鈕
+    resultsContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('details-btn')) {
+            const branch = e.target.getAttribute('data-branch');
+            if (window.currentStats && window.currentStats[branch]) {
+                showDetailsModal(branch, window.currentStats[branch].rawData);
+            }
+        }
+    });
+
+    function showDetailsModal(branch, rawData) {
+        const title = document.getElementById('detailsModalTitle');
+        const body = document.getElementById('detailsModalBody');
+        
+        title.textContent = `${branch} - 詳細資訊`;
+        
+        if (rawData.length === 0) {
+            body.innerHTML = '<p style="text-align: center; color: var(--text-light);">無詳細資料</p>';
+        } else {
+            let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+            rawData.forEach(row => {
+                html += `
+                <div style="background: var(--bg-color); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 1.1rem;">${row.staffName}</span>
+                        <span style="font-size: 0.8rem; color: var(--text-light);">${row.uploadTime || ''}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 8px;">
+                        <span>退房: <b>${row.checkoutRooms}</b></span>
+                        <span>續住: <b>${row.stayRooms}</b></span>
+                        <span>休息: <b>${row.restRooms}</b></span>
+                    </div>
+                    ${row.remarks ? `<div style="font-size: 0.9rem; color: var(--text-main); background: #fff; padding: 8px; border-radius: 8px; margin-top: 8px;"><b>備註：</b>${row.remarks}</div>` : ''}
+                </div>`;
+            });
+            html += '</div>';
+            body.innerHTML = html;
+        }
+        
+        detailsModal.classList.remove('hidden');
+    }
+
     // 登出
     logoutBtn.addEventListener('click', () => {
         currentUser = null;
@@ -112,15 +164,40 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsContainer.innerHTML = '';
 
         try {
+            // 讀取預期系統間數
+            const expectYaling = document.getElementById('expect-雅霖').value;
+            const expectFengjia = document.getElementById('expect-豐家').value;
+            const expectFengguo = document.getElementById('expect-豐國').value;
+            const expectFenggu = document.getElementById('expect-豐谷').value;
+
+            let saveSys = false;
+            if (expectYaling || expectFengjia || expectFengguo || expectFenggu) {
+                saveSys = true;
+            }
+
             // 使用 GET 向 GAS 索取資料
             // 為了避免 GAS 快取，可以加上 timestamp
-            const url = `${CONFIG.GAS_WEB_APP_URL}?action=get&date=${encodeURIComponent(targetDate)}&t=${new Date().getTime()}`;
+            let url = `${CONFIG.GAS_WEB_APP_URL}?action=get&date=${encodeURIComponent(targetDate)}&t=${new Date().getTime()}`;
+            
+            if (saveSys) {
+                url += `&saveSys=true`;
+                url += `&expect_yaling=${encodeURIComponent(expectYaling)}`;
+                url += `&expect_fengjia=${encodeURIComponent(expectFengjia)}`;
+                url += `&expect_fengguo=${encodeURIComponent(expectFengguo)}`;
+                url += `&expect_fenggu=${encodeURIComponent(expectFenggu)}`;
+            }
             
             const response = await fetch(url);
             const data = await response.json();
 
             if (data.status === 'success') {
                 renderResults(data.data, targetDate);
+                
+                // 查詢且渲染完成後，清空輸入框 (不保留記憶)
+                document.getElementById('expect-雅霖').value = '';
+                document.getElementById('expect-豐家').value = '';
+                document.getElementById('expect-豐國').value = '';
+                document.getElementById('expect-豐谷').value = '';
             } else {
                 throw new Error(data.message || '取得資料失敗');
             }
@@ -133,6 +210,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function renderResults(records, targetDate) {
+        // 取得預期數值
+        const expected = {
+            "雅霖": document.getElementById('expect-雅霖').value,
+            "豐家": document.getElementById('expect-豐家').value,
+            "豐國": document.getElementById('expect-豐國').value,
+            "豐谷": document.getElementById('expect-豐谷').value
+        };
+
         // 預期的館別
         const branches = ["雅霖", "豐家", "豐國", "豐谷"];
         
@@ -170,11 +255,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 hasData = true;
             }
 
+            const totalRooms = data.checkout + data.stay + data.rest;
+            let cardClasses = 'result-card';
+            let warningHtml = '';
+
+            // 稽核判斷
+            const expectStr = expected[branch];
+            if (expectStr !== "") {
+                const expectNum = parseInt(expectStr) || 0;
+                if (expectNum !== totalRooms) {
+                    cardClasses += ' error-card';
+                    warningHtml = `
+                        <div class="warning-text">
+                            ⚠️ 申報加總 (${totalRooms}) 與系統總間數 (${expectNum}) 不符！
+                        </div>
+                    `;
+                }
+            }
+
             const card = document.createElement('div');
-            card.className = 'result-card';
+            card.className = cardClasses;
             
             card.innerHTML = `
-                <div class="card-header">${targetDate} - ${branch}</div>
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>${targetDate} - ${branch}</span>
+                    <button class="details-btn btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.85rem;" data-branch="${branch}">詳細資訊</button>
+                </div>
                 <div class="stat-row">
                     <span class="stat-label">退房間數</span>
                     <span class="stat-value">${data.checkout} 間</span>
@@ -183,10 +289,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="stat-label">續住間數</span>
                     <span class="stat-value">${data.stay} 間</span>
                 </div>
-                <div class="stat-row">
+                <div class="stat-row" style="border-bottom: 1px dashed var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
                     <span class="stat-label">休息間數</span>
                     <span class="stat-value">${data.rest} 間</span>
                 </div>
+                <div class="stat-row">
+                    <span class="stat-label" style="font-weight: 600; color: var(--text-main);">總計間數</span>
+                    <span class="stat-value" style="color: var(--primary-color); font-size: 1.2rem; font-weight: 600;">${totalRooms} 間</span>
+                </div>
+                ${warningHtml}
                 <div style="margin-top: 15px; font-size: 0.85rem; color: var(--text-light);">
                     共 ${data.rawData.length} 筆申報紀錄
                 </div>
@@ -202,5 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         }
+        
+        window.currentStats = stats;
     }
 });

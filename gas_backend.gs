@@ -49,6 +49,30 @@ function doGet(e) {
 
     if (action === 'get') {
       const targetDate = e.parameter.date; // 格式預期為 "YYYY-MM-DD"
+      
+      // 處理系統間數回填
+      if (e.parameter.saveSys === 'true') {
+        try {
+          const sysSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("系統間數");
+          if (sysSheet) {
+            const now = new Date();
+            const uploadTime = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+            const rowData = [
+              targetDate,
+              e.parameter.expect_yaling || "",
+              e.parameter.expect_fengjia || "",
+              e.parameter.expect_fengguo || "",
+              e.parameter.expect_fenggu || "",
+              uploadTime
+            ];
+            sysSheet.appendRow(rowData);
+          }
+        } catch (e) {
+          // 若寫入失敗，不中斷讀取流程
+          console.error("系統間數寫入失敗", e);
+        }
+      }
+
       const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
       
       if (!sheet) {

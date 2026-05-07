@@ -421,3 +421,27 @@ button:active {
     color: var(--primary-hover);
     text-decoration: underline;
 }
+
+/* 稽核錯誤提示樣式 */
+.result-card.error-card {
+    background-color: #FDF3F2; /* 莫蘭迪淺粉紅 */
+    border-color: #D18E85;
+}
+
+.error-card .card-header {
+    color: #C06C61;
+    border-bottom-color: #D18E85;
+}
+
+.warning-text {
+    color: #C06C61;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-top: 12px;
+    padding: 8px;
+    background-color: rgba(192, 108, 97, 0.1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
