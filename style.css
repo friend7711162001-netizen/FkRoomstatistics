@@ -474,7 +474,7 @@ button:active {
 }
 
 .tab-btn:hover:not(.active) {
-    color: var(--primary-hover);
+    color: var(--bg-color);
 }
 
 .tab-content {
