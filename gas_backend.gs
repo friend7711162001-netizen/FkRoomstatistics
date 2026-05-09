@@ -47,30 +47,155 @@ function doGet(e) {
       });
     }
 
+    if (action === 'checkSysDate') {
+      const targetDate = e.parameter.date;
+      const sysSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("系統間數");
+      if (!sysSheet) {
+        return createJsonResponse({ status: 'error', message: '找不到名稱為「系統間數」的工作表' });
+      }
+      const data = sysSheet.getDataRange().getValues();
+      let exists = false;
+      for (let i = 1; i < data.length; i++) {
+        let rowDateStr = "";
+        if (data[i][0] instanceof Date) {
+          const d = data[i][0];
+          rowDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        } else {
+          rowDateStr = String(data[i][0]).trim();
+        }
+        if (rowDateStr === targetDate) {
+          exists = true;
+          break;
+        }
+      }
+      return createJsonResponse({ status: 'success', exists: exists });
+    }
+
+    if (action === 'importSysData') {
+      const targetDate = e.parameter.date;
+      const sysSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("系統間數");
+      if (!sysSheet) {
+        return createJsonResponse({ status: 'error', message: '找不到名稱為「系統間數」的工作表' });
+      }
+      
+      const now = new Date();
+      const uploadTime = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      const rowData = [
+        targetDate,
+        e.parameter.expect_yaling || "",
+        e.parameter.expect_fengjia || "",
+        e.parameter.expect_fengguo || "",
+        e.parameter.expect_fenggu || "",
+        uploadTime
+      ];
+
+      const isOverwrite = e.parameter.overwrite === 'true';
+      let updated = false;
+
+      if (isOverwrite) {
+        const data = sysSheet.getDataRange().getValues();
+        for (let i = 1; i < data.length; i++) {
+          let rowDateStr = "";
+          if (data[i][0] instanceof Date) {
+            const d = data[i][0];
+            rowDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          } else {
+            rowDateStr = String(data[i][0]).trim();
+          }
+          if (rowDateStr === targetDate) {
+            sysSheet.getRange(i + 1, 1, 1, rowData.length).setValues([rowData]);
+            updated = true;
+            break;
+          }
+        }
+      }
+
+      if (!updated) {
+        sysSheet.appendRow(rowData);
+      }
+
+      return createJsonResponse({ status: 'success', message: '匯入成功' });
+    }
+
+    if (action === 'saveRemark') {
+      const targetDate = e.parameter.date;
+      const branch = e.parameter.branch;
+      const remark = e.parameter.remark || "";
+      
+      const sysSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("系統間數");
+      if (!sysSheet) {
+        return createJsonResponse({ status: 'error', message: '找不到名稱為「系統間數」的工作表' });
+      }
+
+      let colIndex = -1;
+      if (branch === '雅霖') colIndex = 7;
+      else if (branch === '豐家') colIndex = 8;
+      else if (branch === '豐國') colIndex = 9;
+      else if (branch === '豐谷') colIndex = 10;
+      else {
+        return createJsonResponse({ status: 'error', message: '未知的館別' });
+      }
+
+      const data = sysSheet.getDataRange().getValues();
+      let updated = false;
+
+      for (let i = 1; i < data.length; i++) {
+        let rowDateStr = "";
+        if (data[i][0] instanceof Date) {
+          const d = data[i][0];
+          rowDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        } else {
+          rowDateStr = String(data[i][0]).trim();
+        }
+        
+        if (rowDateStr === targetDate) {
+          sysSheet.getRange(i + 1, colIndex).setValue(remark);
+          updated = true;
+          break;
+        }
+      }
+
+      if (!updated) {
+        return createJsonResponse({ status: 'error', message: '該日期尚未匯入系統間數，無法儲存備註' });
+      }
+
+      return createJsonResponse({ status: 'success', message: '備註儲存成功' });
+    }
+
     if (action === 'get') {
       const targetDate = e.parameter.date; // 格式預期為 "YYYY-MM-DD"
       
-      // 處理系統間數回填
-      if (e.parameter.saveSys === 'true') {
-        try {
-          const sysSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("系統間數");
-          if (sysSheet) {
-            const now = new Date();
-            const uploadTime = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-            const rowData = [
-              targetDate,
-              e.parameter.expect_yaling || "",
-              e.parameter.expect_fengjia || "",
-              e.parameter.expect_fengguo || "",
-              e.parameter.expect_fenggu || "",
-              uploadTime
-            ];
-            sysSheet.appendRow(rowData);
+      // 取出該日期的系統間數
+      let expectedCounts = { "雅霖": "", "豐家": "", "豐國": "", "豐谷": "" };
+      let expectedRemarks = { "雅霖": "", "豐家": "", "豐國": "", "豐谷": "" };
+      try {
+        const sysSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("系統間數");
+        if (sysSheet) {
+          const sysData = sysSheet.getDataRange().getValues();
+          for (let i = 1; i < sysData.length; i++) {
+            let rowDateStr = "";
+            if (sysData[i][0] instanceof Date) {
+              const d = sysData[i][0];
+              rowDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            } else {
+              rowDateStr = String(sysData[i][0]).trim();
+            }
+            if (rowDateStr === targetDate) {
+              expectedCounts["雅霖"] = sysData[i][1] !== undefined ? sysData[i][1] : "";
+              expectedCounts["豐家"] = sysData[i][2] !== undefined ? sysData[i][2] : "";
+              expectedCounts["豐國"] = sysData[i][3] !== undefined ? sysData[i][3] : "";
+              expectedCounts["豐谷"] = sysData[i][4] !== undefined ? sysData[i][4] : "";
+
+              expectedRemarks["雅霖"] = sysData[i][6] !== undefined ? sysData[i][6] : "";
+              expectedRemarks["豐家"] = sysData[i][7] !== undefined ? sysData[i][7] : "";
+              expectedRemarks["豐國"] = sysData[i][8] !== undefined ? sysData[i][8] : "";
+              expectedRemarks["豐谷"] = sysData[i][9] !== undefined ? sysData[i][9] : "";
+              break; // 找到一筆即可
+            }
           }
-        } catch (e) {
-          // 若寫入失敗，不中斷讀取流程
-          console.error("系統間數寫入失敗", e);
         }
+      } catch (e) {
+        console.error("讀取系統間數失敗", e);
       }
 
       const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
@@ -81,7 +206,7 @@ function doGet(e) {
       
       const data = sheet.getDataRange().getValues();
       if (data.length <= 1) {
-        return createJsonResponse({ status: 'success', data: [] });
+        return createJsonResponse({ status: 'success', data: [], expected: expectedCounts, remarks: expectedRemarks });
       }
       
       const headers = data[0]; // [申報日期, 館別, 姓名, 退房間數, 續住間數, 休息間數, 備註欄, 上傳時間]
@@ -90,19 +215,15 @@ function doGet(e) {
       for (let i = 1; i < data.length; i++) {
         const row = data[i];
         
-        // 處理日期格式 (試算表讀出的日期可能是 Date 物件)
+        // 處理日期格式
         let rowDateStr = "";
         if (row[0] instanceof Date) {
           const d = row[0];
-          const yyyy = d.getFullYear();
-          const mm = String(d.getMonth() + 1).padStart(2, '0');
-          const dd = String(d.getDate()).padStart(2, '0');
-          rowDateStr = `${yyyy}-${mm}-${dd}`;
+          rowDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         } else {
           rowDateStr = String(row[0]).trim();
         }
 
-        // 如果該列的日期符合目標日期，才加入結果中
         if (rowDateStr === targetDate) {
           results.push({
             reportDate: rowDateStr,
@@ -117,7 +238,7 @@ function doGet(e) {
         }
       }
       
-      return createJsonResponse({ status: 'success', data: results });
+      return createJsonResponse({ status: 'success', data: results, expected: expectedCounts, remarks: expectedRemarks });
     }
     
     return createJsonResponse({ status: 'error', message: '無效的操作' });

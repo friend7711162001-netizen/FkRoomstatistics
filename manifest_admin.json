@@ -1,0 +1,15 @@
+{
+  "name": "集團間數稽核",
+  "short_name": "間數稽核",
+  "start_url": "./admin.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2c3e50",
+  "icons": [
+    {
+      "src": "icon-admin.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

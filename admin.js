@@ -33,6 +33,8 @@ async function handleCredentialResponse(response) {
             const todayStr = `${yyyy}-${mm}-${dd}`;
             document.getElementById('filterDate').value = todayStr;
             document.getElementById('historyDate').value = todayStr;
+            const importDateEl = document.getElementById('importDate');
+            if (importDateEl) importDateEl.value = todayStr;
         } else {
             alert('抱歉，您的帳號 (' + userEmail + ') 不在管理員名單中。');
             // 嘗試撤銷授權
@@ -119,12 +121,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 委派點擊事件給詳細資訊按鈕
-    resultsContainer.addEventListener('click', (e) => {
+    // 委派點擊事件給詳細資訊與儲存備註按鈕
+    resultsContainer.addEventListener('click', async (e) => {
         if (e.target.classList.contains('details-btn')) {
             const branch = e.target.getAttribute('data-branch');
             if (window.currentStats && window.currentStats[branch]) {
                 showDetailsModal(branch, window.currentStats[branch].rawData);
+            }
+            return;
+        }
+
+        if (e.target.classList.contains('save-remark-btn')) {
+            const btn = e.target;
+            const branch = btn.getAttribute('data-branch');
+            const targetDate = btn.getAttribute('data-date');
+            const remarkText = document.getElementById(`remark-${branch}`).value;
+
+            if (!CONFIG.GAS_WEB_APP_URL || CONFIG.GAS_WEB_APP_URL.includes("請在此填入")) {
+                alert("系統尚未設定完成：請在 config.js 中設定 GAS_WEB_APP_URL");
+                return;
+            }
+
+            const originalText = btn.textContent;
+            btn.textContent = '儲存中...';
+            btn.disabled = true;
+
+            try {
+                let url = `${CONFIG.GAS_WEB_APP_URL}?action=saveRemark&date=${encodeURIComponent(targetDate)}&branch=${encodeURIComponent(branch)}&remark=${encodeURIComponent(remarkText)}&t=${new Date().getTime()}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    btn.textContent = '儲存成功！';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    throw new Error(data.message || '儲存失敗');
+                }
+            } catch (error) {
+                console.error('Save Remark Error:', error);
+                alert('備註儲存失敗：' + error.message);
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
         }
     });
@@ -174,6 +214,78 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 匯入系統間數
+    const importSysBtn = document.getElementById('importSysBtn');
+    if (importSysBtn) {
+        importSysBtn.addEventListener('click', async () => {
+            const importDate = document.getElementById('importDate').value;
+            if (!importDate) {
+                alert('請選擇匯入日期！');
+                return;
+            }
+
+            if (!CONFIG.GAS_WEB_APP_URL || CONFIG.GAS_WEB_APP_URL.includes("請在此填入")) {
+                alert("系統尚未設定完成：請在 config.js 中設定 GAS_WEB_APP_URL");
+                return;
+            }
+
+            const expectYaling = document.getElementById('expect-雅霖').value;
+            const expectFengjia = document.getElementById('expect-豐家').value;
+            const expectFengguo = document.getElementById('expect-豐國').value;
+            const expectFenggu = document.getElementById('expect-豐谷').value;
+
+            if (!expectYaling && !expectFengjia && !expectFengguo && !expectFenggu) {
+                alert('請至少填寫一間館別的系統總間數！');
+                return;
+            }
+
+            adminLoadingOverlay.classList.remove('hidden');
+
+            try {
+                // 檢查該日期是否已有資料
+                const checkUrl = `${CONFIG.GAS_WEB_APP_URL}?action=checkSysDate&date=${encodeURIComponent(importDate)}&t=${new Date().getTime()}`;
+                const checkRes = await fetch(checkUrl);
+                const checkData = await checkRes.json();
+
+                let overwrite = false;
+                if (checkData.status === 'success' && checkData.exists) {
+                    if (!confirm(`日期 ${importDate} 的系統間數已有紀錄，是否確定要覆蓋？`)) {
+                        adminLoadingOverlay.classList.add('hidden');
+                        return; // 使用者取消
+                    }
+                    overwrite = true;
+                }
+
+                // 匯入資料
+                let importUrl = `${CONFIG.GAS_WEB_APP_URL}?action=importSysData&date=${encodeURIComponent(importDate)}&overwrite=${overwrite}&t=${new Date().getTime()}`;
+                importUrl += `&expect_yaling=${encodeURIComponent(expectYaling)}`;
+                importUrl += `&expect_fengjia=${encodeURIComponent(expectFengjia)}`;
+                importUrl += `&expect_fengguo=${encodeURIComponent(expectFengguo)}`;
+                importUrl += `&expect_fenggu=${encodeURIComponent(expectFenggu)}`;
+
+                const importRes = await fetch(importUrl);
+                const importData = await importRes.json();
+
+                if (importData.status === 'success') {
+                    alert('系統間數匯入成功！');
+                    // 清空輸入框
+                    document.getElementById('expect-雅霖').value = '';
+                    document.getElementById('expect-豐家').value = '';
+                    document.getElementById('expect-豐國').value = '';
+                    document.getElementById('expect-豐谷').value = '';
+                } else {
+                    throw new Error(importData.message || '匯入失敗');
+                }
+
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                alert('操作發生錯誤：' + error.message);
+            } finally {
+                adminLoadingOverlay.classList.add('hidden');
+            }
+        });
+    }
+
     // 數據稽核查詢
     fetchDataBtn.addEventListener('click', async () => {
         const targetDate = filterDateInput.value;
@@ -191,39 +303,14 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsContainer.innerHTML = '';
 
         try {
-            // 讀取預期系統間數
-            const expectYaling = document.getElementById('expect-雅霖').value;
-            const expectFengjia = document.getElementById('expect-豐家').value;
-            const expectFengguo = document.getElementById('expect-豐國').value;
-            const expectFenggu = document.getElementById('expect-豐谷').value;
-
-            let saveSys = false;
-            if (expectYaling || expectFengjia || expectFengguo || expectFenggu) {
-                saveSys = true;
-            }
-
             // 使用 GET 向 GAS 索取資料
             let url = `${CONFIG.GAS_WEB_APP_URL}?action=get&date=${encodeURIComponent(targetDate)}&t=${new Date().getTime()}`;
-            
-            if (saveSys) {
-                url += `&saveSys=true`;
-                url += `&expect_yaling=${encodeURIComponent(expectYaling)}`;
-                url += `&expect_fengjia=${encodeURIComponent(expectFengjia)}`;
-                url += `&expect_fengguo=${encodeURIComponent(expectFengguo)}`;
-                url += `&expect_fenggu=${encodeURIComponent(expectFenggu)}`;
-            }
             
             const response = await fetch(url);
             const data = await response.json();
 
             if (data.status === 'success') {
-                renderResults(data.data, targetDate);
-                
-                // 查詢且渲染完成後，清空輸入框
-                document.getElementById('expect-雅霖').value = '';
-                document.getElementById('expect-豐家').value = '';
-                document.getElementById('expect-豐國').value = '';
-                document.getElementById('expect-豐谷').value = '';
+                renderResults(data.data, targetDate, data.expected, data.remarks);
             } else {
                 throw new Error(data.message || '取得資料失敗');
             }
@@ -264,13 +351,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function renderResults(records, targetDate) {
+    function renderResults(records, targetDate, expectedData, expectedRemarksData) {
         // 取得預期數值
-        const expected = {
-            "雅霖": document.getElementById('expect-雅霖').value,
-            "豐家": document.getElementById('expect-豐家').value,
-            "豐國": document.getElementById('expect-豐國').value,
-            "豐谷": document.getElementById('expect-豐谷').value
+        const expected = expectedData || {
+            "雅霖": "",
+            "豐家": "",
+            "豐國": "",
+            "豐谷": ""
+        };
+
+        const expectedRemarks = expectedRemarksData || {
+            "雅霖": "",
+            "豐家": "",
+            "豐國": "",
+            "豐谷": ""
         };
 
         // 預期的館別
@@ -355,6 +449,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${warningHtml}
                 <div style="margin-top: 15px; font-size: 0.85rem; color: var(--text-light);">
                     共 ${data.rawData.length} 筆申報紀錄
+                </div>
+                <div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                    <textarea id="remark-${branch}" rows="2" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; font-family: inherit;" placeholder="在此填寫稽核備註...">${expectedRemarks[branch] || ""}</textarea>
+                    <button class="btn-secondary save-remark-btn" style="width: 100%; margin-top: 8px; padding: 6px;" data-branch="${branch}" data-date="${targetDate}">儲存備註</button>
                 </div>
             `;
             resultsContainer.appendChild(card);
