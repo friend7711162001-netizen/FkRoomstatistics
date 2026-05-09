@@ -35,6 +35,25 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.disabled = true;
         loadingOverlay.classList.remove('hidden');
 
+        let overwrite = false;
+        try {
+            const checkUrl = `${CONFIG.GAS_WEB_APP_URL}?action=checkUserReport&date=${encodeURIComponent(reportDateInput.value)}&name=${encodeURIComponent(staffNameInput.value)}&branch=${encodeURIComponent(branchInput.value)}&t=${new Date().getTime()}`;
+            const checkRes = await fetch(checkUrl);
+            const checkData = await checkRes.json();
+            
+            if (checkData.status === 'success' && checkData.exists) {
+                loadingOverlay.classList.add('hidden');
+                if (!confirm(`${reportDateInput.value} 已經有您在「${branchInput.value}」的申報資料，請問要覆蓋嗎？`)) {
+                    submitBtn.disabled = false;
+                    return;
+                }
+                loadingOverlay.classList.remove('hidden');
+                overwrite = true;
+            }
+        } catch (e) {
+            console.error("Check existing report failed:", e);
+        }
+
         // 取得當下時間做為上傳時間
         const now = new Date();
         const uploadTime = now.toLocaleString('zh-TW');
@@ -42,12 +61,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // 準備資料
         const formData = {
             action: 'submit', // 告訴 GAS 這是提交動作
+            overwrite: overwrite,
             reportDate: reportDateInput.value,
             branch: branchInput.value,
             staffName: staffNameInput.value,
-            checkoutRooms: document.getElementById('checkoutRooms').value,
-            stayRooms: document.getElementById('stayRooms').value,
-            restRooms: document.getElementById('restRooms').value,
+            checkoutRooms: document.getElementById('checkoutRooms').value || 0,
+            stayRooms: document.getElementById('stayRooms').value || 0,
+            restRooms: document.getElementById('restRooms').value || 0,
             remarks: document.getElementById('remarks').value,
             uploadTime: uploadTime
         };

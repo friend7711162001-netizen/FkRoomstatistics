@@ -71,6 +71,35 @@ function doGet(e) {
       return createJsonResponse({ status: 'success', exists: exists });
     }
 
+    if (action === 'checkUserReport') {
+      const targetDate = e.parameter.date;
+      const staffName = e.parameter.name;
+      const branch = e.parameter.branch;
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+      if (!sheet) {
+        return createJsonResponse({ status: 'error', message: '找不到名稱為「資料庫」的工作表' });
+      }
+      const data = sheet.getDataRange().getValues();
+      let exists = false;
+      for (let i = 1; i < data.length; i++) {
+        let rowDateStr = "";
+        if (data[i][0] instanceof Date) {
+          const d = data[i][0];
+          rowDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        } else {
+          rowDateStr = String(data[i][0]).trim();
+        }
+        const rowBranch = String(data[i][1]).trim();
+        const rowName = String(data[i][2]).trim();
+        
+        if (rowDateStr === targetDate && rowName === String(staffName).trim() && rowBranch === String(branch).trim()) {
+          exists = true;
+          break;
+        }
+      }
+      return createJsonResponse({ status: 'success', exists: exists });
+    }
+
     if (action === 'importSysData') {
       const targetDate = e.parameter.date;
       const sysSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("系統間數");
@@ -275,7 +304,32 @@ function doPost(e) {
         data.uploadTime
       ];
       
-      sheet.appendRow(rowData);
+      if (data.overwrite) {
+        let updated = false;
+        const dbData = sheet.getDataRange().getValues();
+        for (let i = 1; i < dbData.length; i++) {
+          let rowDateStr = "";
+          if (dbData[i][0] instanceof Date) {
+            const d = dbData[i][0];
+            rowDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          } else {
+            rowDateStr = String(dbData[i][0]).trim();
+          }
+          const rowBranch = String(dbData[i][1]).trim();
+          const rowName = String(dbData[i][2]).trim();
+
+          if (rowDateStr === data.reportDate && rowName === String(data.staffName).trim() && rowBranch === String(data.branch).trim()) {
+            sheet.getRange(i + 1, 1, 1, rowData.length).setValues([rowData]);
+            updated = true;
+            break;
+          }
+        }
+        if (!updated) {
+          sheet.appendRow(rowData);
+        }
+      } else {
+        sheet.appendRow(rowData);
+      }
       
       // 回傳成功 (雖然因為前端使用 no-cors 模式，不一定讀得到這個 response，但還是按照規範回傳)
       return createJsonResponse({ status: 'success', message: '資料寫入成功' });
