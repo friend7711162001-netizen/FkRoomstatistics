@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.status === 'success') {
-                renderHistory(data.data);
+                renderHistory(data.data, data.remarks, data.expected);
             } else {
                 throw new Error(data.message || '取得資料失敗');
             }
@@ -478,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 渲染歷史調閱分頁 (依照館別分組)
-    function renderHistory(records) {
+    function renderHistory(records, auditRemarksData, expectedData) {
         if (records.length === 0) {
             historyContainer.innerHTML = `
                 <div class="no-data">
@@ -520,9 +520,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }, { checkout: 0, stay: 0, rest: 0 });
 
             // 產生該館別的區塊
+            const auditRemark = (auditRemarksData && auditRemarksData[branch]) ? auditRemarksData[branch] : "";
+            const expectedCount = (expectedData && expectedData[branch]) ? expectedData[branch] : "";
+            const totalReported = branchTotal.checkout + branchTotal.stay + branchTotal.rest;
+
+            let matchStatusHtml = '';
+            if (expectedCount !== "") {
+                const expNum = parseInt(expectedCount) || 0;
+                if (totalReported > expNum) {
+                    matchStatusHtml = `<span style="color: #C06C61; font-size: 0.9rem; margin-left: 8px; background: #FDF3F2; padding: 2px 8px; border-radius: 4px;">⚠️ 系統總間數: ${expNum} (多出 ${totalReported - expNum} 間)</span>`;
+                } else if (totalReported < expNum) {
+                    matchStatusHtml = `<span style="color: #B59341; font-size: 0.9rem; margin-left: 8px; background: #FDF7E7; padding: 2px 8px; border-radius: 4px;">⚠️ 系統總間數: ${expNum} (少 ${expNum - totalReported} 間)</span>`;
+                } else {
+                    matchStatusHtml = `<span style="color: #52796f; font-size: 0.9rem; margin-left: 8px; background: #f0f4f3; padding: 2px 8px; border-radius: 4px;">✓ 與系統符合: ${expNum}</span>`;
+                }
+            }
+            
             historyHtml += `
                 <div class="history-group">
-                    <div class="history-group-title">【${branch}】 歷史紀錄明細</div>
+                    <div class="history-group-title">
+                        【${branch}】 歷史紀錄明細
+                        ${matchStatusHtml}
+                    </div>
+                    ${auditRemark ? `
+                    <div style="background: #fff9e6; border: 1px solid #ffe58f; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; font-size: 0.95rem; color: #856404;">
+                        <strong>📢 稽核備註：</strong>${auditRemark}
+                    </div>` : ''}
                     <div class="history-table-container">
                         <table class="history-table">
                             <thead>
