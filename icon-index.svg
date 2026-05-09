@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Bed frame top -->
+  <path d="M20 50 v-10 a10 10 0 0 1 10-10 h40 a10 10 0 0 1 10 10 v10" fill="none" stroke="#a8937b" stroke-width="4" stroke-linecap="round"/>
+  <!-- Pillows -->
+  <rect x="28" y="38" width="18" height="10" rx="3" fill="none" stroke="#a8937b" stroke-width="4"/>
+  <rect x="54" y="38" width="18" height="10" rx="3" fill="none" stroke="#a8937b" stroke-width="4"/>
+  <!-- Bed frame bottom -->
+  <path d="M15 50 a15 15 0 0 1 15-15" fill="none" stroke="transparent"/>
+  <path d="M20 50 v10 a5 5 0 0 0 5 5 h50 a5 5 0 0 0 5-5 v-10" fill="none" stroke="#a8937b" stroke-width="4" stroke-linecap="round"/>
+  <path d="M20 50 h60" stroke="#a8937b" stroke-width="4" stroke-linecap="round"/>
+  <path d="M15 65 a10 10 0 0 0 10-10" fill="none" stroke="transparent"/>
+  <!-- Legs -->
+  <path d="M23 65 v8 M77 65 v8" stroke="#a8937b" stroke-width="4" stroke-linecap="round"/>
+</svg>
