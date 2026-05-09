@@ -347,3 +347,219 @@ function createJsonResponse(responseObject) {
   return ContentService.createTextOutput(JSON.stringify(responseObject))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+// ====== 新增：每週寄送稽核週報 ======
+function sendWeeklyAuditReport() {
+  try {
+    const sheetDb = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("資料庫");
+    const sheetSys = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("系統間數");
+    const sheetAdmin = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("管理員");
+    
+    if (!sheetDb || !sheetSys || !sheetAdmin) {
+      console.error("找不到必要的工作表");
+      return;
+    }
+
+    // 1. 計算上週一到週日的日期範圍
+    const today = new Date(); // 假設執行時是週三
+    const dayOfWeek = today.getDay(); // 0(Sun) ~ 6(Sat), 週三 = 3
+    
+    // 如果今天不是週三，此程式依然可以跑，但我們就以「執行當下的前一個完整週(一~日)」來抓資料
+    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    
+    const lastMonday = new Date(today);
+    lastMonday.setDate(today.getDate() - daysSinceMonday - 7);
+    
+    const lastSunday = new Date(today);
+    lastSunday.setDate(today.getDate() - daysSinceMonday - 1);
+    
+    // 產生 YYYY-MM-DD 的字串陣列以便比對
+    const targetDates = [];
+    for (let d = new Date(lastMonday); d <= lastSunday; d.setDate(d.getDate() + 1)) {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      targetDates.push(`${yyyy}-${mm}-${dd}`);
+    }
+
+    // 2. 抓取 Email 清單 (管理員 C 欄, index=2)
+    const adminData = sheetAdmin.getDataRange().getValues();
+    const emailList = [];
+    for (let i = 1; i < adminData.length; i++) {
+      const email = String(adminData[i][2]).trim(); // C欄
+      if (email && email.includes('@')) {
+        emailList.push(email);
+      }
+    }
+    
+    if (emailList.length === 0) {
+      console.log("沒有找到要寄送的 Email 名單 (管理員工作表 C 欄)");
+      return;
+    }
+
+    // 3. 讀取 [資料庫] 計算申報總數
+    // 結構: date -> branch -> reportedTotal
+    const reportSummary = {};
+    targetDates.forEach(date => {
+      reportSummary[date] = { "雅霖": 0, "豐家": 0, "豐國": 0, "豐谷": 0 };
+    });
+    
+    const dbData = sheetDb.getDataRange().getValues();
+    for (let i = 1; i < dbData.length; i++) {
+      const row = dbData[i];
+      let rowDateStr = "";
+      if (row[0] instanceof Date) {
+        rowDateStr = `${row[0].getFullYear()}-${String(row[0].getMonth() + 1).padStart(2, '0')}-${String(row[0].getDate()).padStart(2, '0')}`;
+      } else {
+        rowDateStr = String(row[0]).trim();
+      }
+      
+      if (targetDates.includes(rowDateStr)) {
+        const branch = String(row[1]).trim();
+        const checkout = parseInt(row[3]) || 0;
+        const stay = parseInt(row[4]) || 0;
+        const rest = parseInt(row[5]) || 0;
+        
+        if (reportSummary[rowDateStr] && reportSummary[rowDateStr][branch] !== undefined) {
+          reportSummary[rowDateStr][branch] += (checkout + stay + rest);
+        }
+      }
+    }
+
+    // 4. 讀取 [系統間數] 取得預期數值與備註
+    // 結構: date -> branch -> { expected: N, remark: "..." }
+    const sysSummary = {};
+    targetDates.forEach(date => {
+      sysSummary[date] = {
+        "雅霖": { expected: null, remark: "" },
+        "豐家": { expected: null, remark: "" },
+        "豐國": { expected: null, remark: "" },
+        "豐谷": { expected: null, remark: "" }
+      };
+    });
+    
+    const sysData = sheetSys.getDataRange().getValues();
+    for (let i = 1; i < sysData.length; i++) {
+      let rowDateStr = "";
+      if (sysData[i][0] instanceof Date) {
+        rowDateStr = `${sysData[i][0].getFullYear()}-${String(sysData[i][0].getMonth() + 1).padStart(2, '0')}-${String(sysData[i][0].getDate()).padStart(2, '0')}`;
+      } else {
+        rowDateStr = String(sysData[i][0]).trim();
+      }
+      
+      if (targetDates.includes(rowDateStr)) {
+        sysSummary[rowDateStr]["雅霖"] = { 
+          expected: sysData[i][1] !== "" ? parseInt(sysData[i][1]) || 0 : null, 
+          remark: sysData[i][6] || "" 
+        };
+        sysSummary[rowDateStr]["豐家"] = { 
+          expected: sysData[i][2] !== "" ? parseInt(sysData[i][2]) || 0 : null, 
+          remark: sysData[i][7] || "" 
+        };
+        sysSummary[rowDateStr]["豐國"] = { 
+          expected: sysData[i][3] !== "" ? parseInt(sysData[i][3]) || 0 : null, 
+          remark: sysData[i][8] || "" 
+        };
+        sysSummary[rowDateStr]["豐谷"] = { 
+          expected: sysData[i][4] !== "" ? parseInt(sysData[i][4]) || 0 : null, 
+          remark: sysData[i][9] || "" 
+        };
+      }
+    }
+
+    // 5. 產生 HTML 信件內容
+    const dateRangeStr = `${targetDates[0]} ~ ${targetDates[targetDates.length - 1]}`;
+    let diffCount = 0;
+    
+    // 生成四館的表格
+    const branches = ["雅霖", "豐家", "豐國", "豐谷"];
+    let tablesHtml = "";
+    
+    for (const branch of branches) {
+      tablesHtml += `<h3 style="color: #2c3e50; border-bottom: 2px solid #ddd; padding-bottom: 5px;">📍 ${branch}</h3>`;
+      tablesHtml += `
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-family: sans-serif;">
+          <thead>
+            <tr style="background-color: #f8f9fa;">
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">日期</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">申報數</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">系統數</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">差異</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">稽核備註</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      for (const date of targetDates) {
+        const reported = reportSummary[date][branch];
+        const expectedObj = sysSummary[date][branch];
+        const expected = expectedObj.expected;
+        const remark = expectedObj.remark;
+        
+        let diffStr = "-";
+        let rowStyle = "";
+        
+        if (expected !== null) {
+          const diff = reported - expected;
+          if (diff > 0) {
+            diffStr = `<span style="color: #C06C61; font-weight: bold;">+${diff}</span>`;
+            rowStyle = "background-color: #FDF3F2;"; // 淺粉紅
+            diffCount++;
+          } else if (diff < 0) {
+            diffStr = `<span style="color: #B59341; font-weight: bold;">${diff}</span>`;
+            rowStyle = "background-color: #FDF7E7;"; // 淺黃色
+            diffCount++;
+          } else {
+            diffStr = "0";
+          }
+        }
+        
+        tablesHtml += `
+          <tr style="${rowStyle}">
+            <td style="border: 1px solid #ddd; padding: 8px;">${date}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${reported}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${expected !== null ? expected : '-'}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${diffStr}</td>
+            <td style="border: 1px solid #ddd; padding: 8px;">${remark}</td>
+          </tr>
+        `;
+      }
+      
+      tablesHtml += `</tbody></table>`;
+    }
+
+    const subject = `[集團間數稽核週報] ${dateRangeStr} 房間稽核總結`;
+    const summaryText = diffCount === 0 
+      ? `上週 ${dateRangeStr} 各館別資料皆與系統相符，無異常。` 
+      : `上週 ${dateRangeStr} 共有 <b>${diffCount}</b> 筆紀錄與系統間數不符，詳細情形請參閱下方各館明細：`;
+
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; color: #333;">
+        <h2 style="color: #2c3e50;">📊 集團間數稽核週報</h2>
+        <p style="font-size: 16px; background-color: #e9ecef; padding: 15px; border-radius: 8px;">
+          ${summaryText}
+        </p>
+        
+        ${tablesHtml}
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+          <p style="color: #777; font-size: 14px;">此信件為系統自動發送，請勿直接回覆。</p>
+          <a href="https://friend7711162001-netizen.github.io/FkRoomstatistics/admin.html" style="display: inline-block; margin-top: 10px; padding: 10px 20px; background-color: #2c3e50; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">前往管理員後台查看詳細紀錄</a>
+        </div>
+      </div>
+    `;
+
+    // 6. 寄出信件
+    MailApp.sendEmail({
+      to: emailList.join(","),
+      subject: subject,
+      htmlBody: htmlBody
+    });
+    
+    console.log(`週報已成功寄送至: ${emailList.join(",")}`);
+    
+  } catch (error) {
+    console.error("發送週報失敗: " + error.toString());
+  }
+}
