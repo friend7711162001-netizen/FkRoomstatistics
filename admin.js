@@ -412,10 +412,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const expectStr = expected[branch];
             if (expectStr !== "") {
                 const expectNum = parseInt(expectStr) || 0;
-                if (expectNum !== totalRooms) {
+                if (totalRooms > expectNum) {
                     cardClasses += ' error-card';
                     warningHtml = `
                         <div class="warning-text">
+                            ⚠️ 申報加總 (${totalRooms}) 與系統總間數 (${expectNum}) 不符！
+                        </div>
+                    `;
+                } else if (totalRooms < expectNum) {
+                    cardClasses += ' short-card';
+                    warningHtml = `
+                        <div class="short-text">
                             ⚠️ 申報加總 (${totalRooms}) 與系統總間數 (${expectNum}) 不符！
                         </div>
                     `;

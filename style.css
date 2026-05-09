@@ -422,7 +422,7 @@ button:active {
     text-decoration: underline;
 }
 
-/* 稽核錯誤提示樣式 */
+/* 稽核錯誤提示樣式 (大於系統間數 - 莫蘭迪粉紅) */
 .result-card.error-card {
     background-color: #FDF3F2; /* 莫蘭迪淺粉紅 */
     border-color: #D18E85;
@@ -440,6 +440,30 @@ button:active {
     margin-top: 12px;
     padding: 8px;
     background-color: rgba(192, 108, 97, 0.1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 稽核短少提示樣式 (小於系統間數 - 莫蘭迪黃) */
+.result-card.short-card {
+    background-color: #FDF7E7; /* 莫蘭迪淺黃 */
+    border-color: #D4B872;
+}
+
+.short-card .card-header {
+    color: #B59341;
+    border-bottom-color: #D4B872;
+}
+
+.short-text {
+    color: #B59341;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-top: 12px;
+    padding: 8px;
+    background-color: rgba(181, 147, 65, 0.1);
     border-radius: 8px;
     display: flex;
     align-items: center;
