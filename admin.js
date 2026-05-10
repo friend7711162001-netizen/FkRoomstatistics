@@ -310,6 +310,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.status === 'success') {
+                // 檢查是否已匯入系統總間數
+                const expected = data.expected || {};
+                const isImported = Object.values(expected).some(val => val !== "");
+                
+                if (!isImported) {
+                    alert(`日期 ${targetDate} 的系統總間數尚未匯入，請先於上方「填寫系統總間數」並點擊「匯入」後，再進行稽核查詢！`);
+                    return; // 中止並提示
+                }
+
                 renderResults(data.data, targetDate, data.expected, data.remarks);
             } else {
                 throw new Error(data.message || '取得資料失敗');
@@ -528,11 +537,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (expectedCount !== "") {
                 const expNum = parseInt(expectedCount) || 0;
                 if (totalReported > expNum) {
-                    matchStatusHtml = `<span style="color: #C06C61; font-size: 0.9rem; margin-left: 8px; background: #FDF3F2; padding: 2px 8px; border-radius: 4px;">⚠️ 系統總間數: ${expNum} (多出 ${totalReported - expNum} 間)</span>`;
+                    matchStatusHtml = `<div style="color: #C06C61; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF3F2; padding: 4px 8px; border-radius: 4px;">⚠️ 系統總間數: ${expNum} (多出 ${totalReported - expNum} 間)</div>`;
                 } else if (totalReported < expNum) {
-                    matchStatusHtml = `<span style="color: #B59341; font-size: 0.9rem; margin-left: 8px; background: #FDF7E7; padding: 2px 8px; border-radius: 4px;">⚠️ 系統總間數: ${expNum} (少 ${expNum - totalReported} 間)</span>`;
+                    matchStatusHtml = `<div style="color: #B59341; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF7E7; padding: 4px 8px; border-radius: 4px;">⚠️ 系統總間數: ${expNum} (少 ${expNum - totalReported} 間)</div>`;
                 } else {
-                    matchStatusHtml = `<span style="color: #52796f; font-size: 0.9rem; margin-left: 8px; background: #f0f4f3; padding: 2px 8px; border-radius: 4px;">✓ 與系統符合: ${expNum}</span>`;
+                    matchStatusHtml = `<div style="color: #52796f; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #f0f4f3; padding: 4px 8px; border-radius: 4px;">✓ 與系統符合: ${expNum}</div>`;
                 }
             }
             
@@ -572,11 +581,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             </tbody>
                             <tfoot>
                                 <tr class="total-row">
-                                    <td class="cell-name">館別總計</td>
+                                    <td class="cell-name" style="text-align: right;">館別總計</td>
                                     <td class="cell-num">${branchTotal.checkout}</td>
                                     <td class="cell-num">${branchTotal.stay}</td>
                                     <td class="cell-num">${branchTotal.rest}</td>
-                                    <td colspan="2" style="text-align: right; color: var(--primary-color); font-weight: 600;">
+                                    <td colspan="2"></td>
+                                </tr>
+                                <tr style="background-color: var(--bg-color);">
+                                    <td colspan="6" style="text-align: left; color: var(--primary-color); font-weight: 600; border-top: none;">
                                         三項合計：${branchTotal.checkout + branchTotal.stay + branchTotal.rest} 間
                                     </td>
                                 </tr>
