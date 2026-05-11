@@ -616,3 +616,46 @@ button:active {
     color: #666;
     min-width: 150px;
 }
+
+/* 系統總間數預期設定區塊 */
+.expected-totals {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    background: var(--bg-color);
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.expected-totals-title {
+    font-weight: 600;
+    grid-column: 1 / -1;
+    color: var(--primary-color);
+    margin-bottom: 4px;
+}
+
+.expected-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.expected-row label {
+    margin: 0;
+    min-width: 45px;
+    font-size: 0.95rem;
+}
+
+.expected-row input {
+    flex: 1; /* 讓兩個輸入框平分剩下的寬度 */
+    min-width: 0; /* 防止內容撐開外框 */
+    padding: 8px;
+}
+
+/* 手機版改為單行一家 */
+@media (max-width: 600px) {
+    .expected-totals {
+        grid-template-columns: 1fr;
+    }
+}

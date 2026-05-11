@@ -234,8 +234,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const expectFengguo = document.getElementById('expect-豐國').value;
             const expectFenggu = document.getElementById('expect-豐谷').value;
 
-            if (!expectYaling && !expectFengjia && !expectFengguo && !expectFenggu) {
-                alert('請至少填寫一間館別的系統總間數！');
+            const expectRestYaling = document.getElementById('expect-rest-雅霖').value;
+            const expectRestFengjia = document.getElementById('expect-rest-豐家').value;
+            const expectRestFengguo = document.getElementById('expect-rest-豐國').value;
+            const expectRestFenggu = document.getElementById('expect-rest-豐谷').value;
+
+            if (!expectYaling && !expectFengjia && !expectFengguo && !expectFenggu && !expectRestYaling && !expectRestFengjia && !expectRestFengguo && !expectRestFenggu) {
+                alert('請至少填寫一項系統預期資料！');
                 return;
             }
 
@@ -262,6 +267,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 importUrl += `&expect_fengjia=${encodeURIComponent(expectFengjia)}`;
                 importUrl += `&expect_fengguo=${encodeURIComponent(expectFengguo)}`;
                 importUrl += `&expect_fenggu=${encodeURIComponent(expectFenggu)}`;
+                importUrl += `&expect_rest_yaling=${encodeURIComponent(expectRestYaling)}`;
+                importUrl += `&expect_rest_fengjia=${encodeURIComponent(expectRestFengjia)}`;
+                importUrl += `&expect_rest_fengguo=${encodeURIComponent(expectRestFengguo)}`;
+                importUrl += `&expect_rest_fenggu=${encodeURIComponent(expectRestFenggu)}`;
 
                 const importRes = await fetch(importUrl);
                 const importData = await importRes.json();
@@ -273,6 +282,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('expect-豐家').value = '';
                     document.getElementById('expect-豐國').value = '';
                     document.getElementById('expect-豐谷').value = '';
+                    document.getElementById('expect-rest-雅霖').value = '';
+                    document.getElementById('expect-rest-豐家').value = '';
+                    document.getElementById('expect-rest-豐國').value = '';
+                    document.getElementById('expect-rest-豐谷').value = '';
                 } else {
                     throw new Error(importData.message || '匯入失敗');
                 }
@@ -312,14 +325,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.status === 'success') {
                 // 檢查是否已匯入系統總間數
                 const expected = data.expected || {};
-                const isImported = Object.values(expected).some(val => val !== "");
+                const expectedRest = data.expectedRest || {};
+                const isImported = Object.values(expected).some(val => val !== "") || Object.values(expectedRest).some(val => val !== "");
                 
                 if (!isImported) {
                     alert(`日期 ${targetDate} 的系統總間數尚未匯入，請先於上方「填寫系統總間數」並點擊「匯入」後，再進行稽核查詢！`);
                     return; // 中止並提示
                 }
 
-                renderResults(data.data, targetDate, data.expected, data.remarks);
+                renderResults(data.data, targetDate, data.expected, data.expectedRest, data.remarks);
             } else {
                 throw new Error(data.message || '取得資料失敗');
             }
@@ -348,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.status === 'success') {
-                renderHistory(data.data, data.remarks, data.expected);
+                renderHistory(data.data, data.remarks, data.expected, data.expectedRest);
             } else {
                 throw new Error(data.message || '取得資料失敗');
             }
@@ -360,9 +374,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function renderResults(records, targetDate, expectedData, expectedRemarksData) {
+    function renderResults(records, targetDate, expectedData, expectedRestData, expectedRemarksData) {
         // 取得預期數值
         const expected = expectedData || {
+            "雅霖": "",
+            "豐家": "",
+            "豐國": "",
+            "豐谷": ""
+        };
+
+        const expectedRest = expectedRestData || {
             "雅霖": "",
             "豐家": "",
             "豐國": "",
@@ -419,20 +440,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 稽核判斷
             const expectStr = expected[branch];
+            const expectRestStr = expectedRest[branch];
+            const totalStay = data.checkout + data.stay;
+            const totalRest = data.rest;
+
             if (expectStr !== "") {
                 const expectNum = parseInt(expectStr) || 0;
-                if (totalRooms > expectNum) {
+                if (totalStay > expectNum) {
                     cardClasses += ' error-card';
-                    warningHtml = `
+                    warningHtml += `
                         <div class="warning-text">
-                            ⚠️ 申報加總 (${totalRooms}) 與系統總間數 (${expectNum}) 不符！
+                            ⚠️ 住宿加總 (${totalStay}) 與系統間數 (${expectNum}) 不符！
                         </div>
                     `;
-                } else if (totalRooms < expectNum) {
+                } else if (totalStay < expectNum) {
                     cardClasses += ' short-card';
-                    warningHtml = `
+                    warningHtml += `
                         <div class="short-text">
-                            ⚠️ 申報加總 (${totalRooms}) 與系統總間數 (${expectNum}) 不符！
+                            ⚠️ 住宿加總 (${totalStay}) 與系統間數 (${expectNum}) 不符！
+                        </div>
+                    `;
+                }
+            }
+
+            if (expectRestStr !== "") {
+                const expectRestNum = parseInt(expectRestStr) || 0;
+                if (totalRest > expectRestNum) {
+                    if (!cardClasses.includes('error-card')) cardClasses += ' error-card';
+                    warningHtml += `
+                        <div class="warning-text" style="margin-top: 4px;">
+                            ⚠️ 休息加總 (${totalRest}) 與系統休數 (${expectRestNum}) 不符！
+                        </div>
+                    `;
+                } else if (totalRest < expectRestNum) {
+                    if (!cardClasses.includes('short-card') && !cardClasses.includes('error-card')) cardClasses += ' short-card';
+                    warningHtml += `
+                        <div class="short-text" style="margin-top: 4px;">
+                            ⚠️ 休息加總 (${totalRest}) 與系統休數 (${expectRestNum}) 不符！
                         </div>
                     `;
                 }
@@ -487,7 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 渲染歷史調閱分頁 (依照館別分組)
-    function renderHistory(records, auditRemarksData, expectedData) {
+    function renderHistory(records, auditRemarksData, expectedData, expectedRestData) {
         if (records.length === 0) {
             historyContainer.innerHTML = `
                 <div class="no-data">
@@ -531,17 +575,34 @@ document.addEventListener('DOMContentLoaded', () => {
             // 產生該館別的區塊
             const auditRemark = (auditRemarksData && auditRemarksData[branch]) ? auditRemarksData[branch] : "";
             const expectedCount = (expectedData && expectedData[branch]) ? expectedData[branch] : "";
-            const totalReported = branchTotal.checkout + branchTotal.stay + branchTotal.rest;
+            const expectedRestCount = (expectedRestData && expectedRestData[branch]) ? expectedRestData[branch] : "";
+            
+            const totalStay = branchTotal.checkout + branchTotal.stay;
+            const totalRest = branchTotal.rest;
 
             let matchStatusHtml = '';
+            
+            // 住宿比對
             if (expectedCount !== "") {
                 const expNum = parseInt(expectedCount) || 0;
-                if (totalReported > expNum) {
-                    matchStatusHtml = `<div style="color: #C06C61; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF3F2; padding: 4px 8px; border-radius: 4px;">⚠️ 系統總間數: ${expNum} (多出 ${totalReported - expNum} 間)</div>`;
-                } else if (totalReported < expNum) {
-                    matchStatusHtml = `<div style="color: #B59341; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF7E7; padding: 4px 8px; border-radius: 4px;">⚠️ 系統總間數: ${expNum} (少 ${expNum - totalReported} 間)</div>`;
+                if (totalStay > expNum) {
+                    matchStatusHtml += `<div style="color: #C06C61; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF3F2; padding: 4px 8px; border-radius: 4px; margin-right: 4px;">⚠️ 系統間數: ${expNum} (住宿多 ${totalStay - expNum} 間)</div>`;
+                } else if (totalStay < expNum) {
+                    matchStatusHtml += `<div style="color: #B59341; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF7E7; padding: 4px 8px; border-radius: 4px; margin-right: 4px;">⚠️ 系統間數: ${expNum} (住宿少 ${expNum - totalStay} 間)</div>`;
                 } else {
-                    matchStatusHtml = `<div style="color: #52796f; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #f0f4f3; padding: 4px 8px; border-radius: 4px;">✓ 與系統符合: ${expNum}</div>`;
+                    matchStatusHtml += `<div style="color: #52796f; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #f0f4f3; padding: 4px 8px; border-radius: 4px; margin-right: 4px;">✓ 住宿符合: ${expNum}</div>`;
+                }
+            }
+            
+            // 休息比對
+            if (expectedRestCount !== "") {
+                const expRestNum = parseInt(expectedRestCount) || 0;
+                if (totalRest > expRestNum) {
+                    matchStatusHtml += `<div style="color: #C06C61; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF3F2; padding: 4px 8px; border-radius: 4px;">⚠️ 系統休數: ${expRestNum} (休息多 ${totalRest - expRestNum} 間)</div>`;
+                } else if (totalRest < expRestNum) {
+                    matchStatusHtml += `<div style="color: #B59341; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF7E7; padding: 4px 8px; border-radius: 4px;">⚠️ 系統休數: ${expRestNum} (休息少 ${expRestNum - totalRest} 間)</div>`;
+                } else {
+                    matchStatusHtml += `<div style="color: #52796f; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #f0f4f3; padding: 4px 8px; border-radius: 4px;">✓ 休息符合: ${expRestNum}</div>`;
                 }
             }
             

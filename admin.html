@@ -54,28 +54,27 @@
                             style="padding: 10px 20px; flex-shrink: 0;">匯入</button>
                     </div>
 
-                    <div class="expected-totals"
-                        style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; background: var(--bg-color); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color);">
-                        <div style="font-weight: 600; grid-column: 1 / -1; color: var(--primary-color);">填寫系統總間數</div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">雅霖:</label>
-                            <input type="number" id="expect-雅霖" min="0" placeholder="間" style="padding: 8px;"
-                                autocomplete="off">
+                    <div class="expected-totals">
+                        <div class="expected-totals-title">填寫系統總間數</div>
+                        <div class="expected-row">
+                            <label for="expect-雅霖">雅霖:</label>
+                            <input type="number" id="expect-雅霖" min="0" placeholder="間" autocomplete="off">
+                            <input type="number" id="expect-rest-雅霖" min="0" placeholder="休" autocomplete="off">
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐家:</label>
-                            <input type="number" id="expect-豐家" min="0" placeholder="間" style="padding: 8px;"
-                                autocomplete="off">
+                        <div class="expected-row">
+                            <label for="expect-豐家">豐家:</label>
+                            <input type="number" id="expect-豐家" min="0" placeholder="間" autocomplete="off">
+                            <input type="number" id="expect-rest-豐家" min="0" placeholder="休" autocomplete="off">
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐國:</label>
-                            <input type="number" id="expect-豐國" min="0" placeholder="間" style="padding: 8px;"
-                                autocomplete="off">
+                        <div class="expected-row">
+                            <label for="expect-豐國">豐國:</label>
+                            <input type="number" id="expect-豐國" min="0" placeholder="間" autocomplete="off">
+                            <input type="number" id="expect-rest-豐國" min="0" placeholder="休" autocomplete="off">
                         </div>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label style="margin: 0; min-width: 40px; font-size: 0.95rem;">豐谷:</label>
-                            <input type="number" id="expect-豐谷" min="0" placeholder="間" style="padding: 8px;"
-                                autocomplete="off">
+                        <div class="expected-row">
+                            <label for="expect-豐谷">豐谷:</label>
+                            <input type="number" id="expect-豐谷" min="0" placeholder="間" autocomplete="off">
+                            <input type="number" id="expect-rest-豐谷" min="0" placeholder="休" autocomplete="off">
                         </div>
                     </div>
                 </div>

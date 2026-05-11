@@ -133,6 +133,16 @@ function doGet(e) {
           }
           if (rowDateStr === targetDate) {
             sysSheet.getRange(i + 1, 1, 1, rowData.length).setValues([rowData]);
+            
+            // 寫入休息間數 (K, L, M, N 欄, 對應 11, 12, 13, 14 欄)
+            const restData = [
+              e.parameter.expect_rest_yaling || "",
+              e.parameter.expect_rest_fengjia || "",
+              e.parameter.expect_rest_fengguo || "",
+              e.parameter.expect_rest_fenggu || ""
+            ];
+            sysSheet.getRange(i + 1, 11, 1, 4).setValues([restData]);
+            
             updated = true;
             break;
           }
@@ -140,7 +150,21 @@ function doGet(e) {
       }
 
       if (!updated) {
-        sysSheet.appendRow(rowData);
+        // 新增時，保留 G~J 空白以相容備註，並將休息間數接在後方 K~N
+        const newRowData = [
+          targetDate,
+          e.parameter.expect_yaling || "",
+          e.parameter.expect_fengjia || "",
+          e.parameter.expect_fengguo || "",
+          e.parameter.expect_fenggu || "",
+          uploadTime,
+          "", "", "", "", // G, H, I, J 備註預設留空
+          e.parameter.expect_rest_yaling || "",
+          e.parameter.expect_rest_fengjia || "",
+          e.parameter.expect_rest_fengguo || "",
+          e.parameter.expect_rest_fenggu || ""
+        ];
+        sysSheet.appendRow(newRowData);
       }
 
       return createJsonResponse({ status: 'success', message: '匯入成功' });
@@ -196,6 +220,7 @@ function doGet(e) {
       
       // 取出該日期的系統間數
       let expectedCounts = { "雅霖": "", "豐家": "", "豐國": "", "豐谷": "" };
+      let expectedRestCounts = { "雅霖": "", "豐家": "", "豐國": "", "豐谷": "" };
       let expectedRemarks = { "雅霖": "", "豐家": "", "豐國": "", "豐谷": "" };
       try {
         const sysSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("系統間數");
@@ -219,6 +244,11 @@ function doGet(e) {
               expectedRemarks["豐家"] = sysData[i][7] !== undefined ? sysData[i][7] : "";
               expectedRemarks["豐國"] = sysData[i][8] !== undefined ? sysData[i][8] : "";
               expectedRemarks["豐谷"] = sysData[i][9] !== undefined ? sysData[i][9] : "";
+
+              expectedRestCounts["雅霖"] = sysData[i][10] !== undefined ? sysData[i][10] : "";
+              expectedRestCounts["豐家"] = sysData[i][11] !== undefined ? sysData[i][11] : "";
+              expectedRestCounts["豐國"] = sysData[i][12] !== undefined ? sysData[i][12] : "";
+              expectedRestCounts["豐谷"] = sysData[i][13] !== undefined ? sysData[i][13] : "";
               break; // 找到一筆即可
             }
           }
@@ -235,7 +265,7 @@ function doGet(e) {
       
       const data = sheet.getDataRange().getValues();
       if (data.length <= 1) {
-        return createJsonResponse({ status: 'success', data: [], expected: expectedCounts, remarks: expectedRemarks });
+        return createJsonResponse({ status: 'success', data: [], expected: expectedCounts, expectedRest: expectedRestCounts, remarks: expectedRemarks });
       }
       
       const headers = data[0]; // [申報日期, 館別, 姓名, 退房間數, 續住間數, 休息間數, 備註欄, 上傳時間]
@@ -267,7 +297,7 @@ function doGet(e) {
         }
       }
       
-      return createJsonResponse({ status: 'success', data: results, expected: expectedCounts, remarks: expectedRemarks });
+      return createJsonResponse({ status: 'success', data: results, expected: expectedCounts, expectedRest: expectedRestCounts, remarks: expectedRemarks });
     }
     
     return createJsonResponse({ status: 'error', message: '無效的操作' });
@@ -398,10 +428,15 @@ function sendWeeklyAuditReport() {
     }
 
     // 3. 讀取 [資料庫] 計算申報總數
-    // 結構: date -> branch -> reportedTotal
+    // 結構: date -> branch -> { stayTotal, restTotal }
     const reportSummary = {};
     targetDates.forEach(date => {
-      reportSummary[date] = { "雅霖": 0, "豐家": 0, "豐國": 0, "豐谷": 0 };
+      reportSummary[date] = { 
+        "雅霖": { stayTotal: 0, restTotal: 0 }, 
+        "豐家": { stayTotal: 0, restTotal: 0 }, 
+        "豐國": { stayTotal: 0, restTotal: 0 }, 
+        "豐谷": { stayTotal: 0, restTotal: 0 } 
+      };
     });
     
     const dbData = sheetDb.getDataRange().getValues();
@@ -421,20 +456,21 @@ function sendWeeklyAuditReport() {
         const rest = parseInt(row[5]) || 0;
         
         if (reportSummary[rowDateStr] && reportSummary[rowDateStr][branch] !== undefined) {
-          reportSummary[rowDateStr][branch] += (checkout + stay + rest);
+          reportSummary[rowDateStr][branch].stayTotal += (checkout + stay);
+          reportSummary[rowDateStr][branch].restTotal += rest;
         }
       }
     }
 
     // 4. 讀取 [系統間數] 取得預期數值與備註
-    // 結構: date -> branch -> { expected: N, remark: "..." }
+    // 結構: date -> branch -> { expected: N, expectedRest: M, remark: "..." }
     const sysSummary = {};
     targetDates.forEach(date => {
       sysSummary[date] = {
-        "雅霖": { expected: null, remark: "" },
-        "豐家": { expected: null, remark: "" },
-        "豐國": { expected: null, remark: "" },
-        "豐谷": { expected: null, remark: "" }
+        "雅霖": { expected: null, expectedRest: null, remark: "" },
+        "豐家": { expected: null, expectedRest: null, remark: "" },
+        "豐國": { expected: null, expectedRest: null, remark: "" },
+        "豐谷": { expected: null, expectedRest: null, remark: "" }
       };
     });
     
@@ -449,19 +485,23 @@ function sendWeeklyAuditReport() {
       
       if (targetDates.includes(rowDateStr)) {
         sysSummary[rowDateStr]["雅霖"] = { 
-          expected: sysData[i][1] !== "" ? parseInt(sysData[i][1]) || 0 : null, 
+          expected: sysData[i][1] !== "" && sysData[i][1] !== undefined ? parseInt(sysData[i][1]) || 0 : null, 
+          expectedRest: sysData[i][10] !== "" && sysData[i][10] !== undefined ? parseInt(sysData[i][10]) || 0 : null,
           remark: sysData[i][6] || "" 
         };
         sysSummary[rowDateStr]["豐家"] = { 
-          expected: sysData[i][2] !== "" ? parseInt(sysData[i][2]) || 0 : null, 
+          expected: sysData[i][2] !== "" && sysData[i][2] !== undefined ? parseInt(sysData[i][2]) || 0 : null, 
+          expectedRest: sysData[i][11] !== "" && sysData[i][11] !== undefined ? parseInt(sysData[i][11]) || 0 : null,
           remark: sysData[i][7] || "" 
         };
         sysSummary[rowDateStr]["豐國"] = { 
-          expected: sysData[i][3] !== "" ? parseInt(sysData[i][3]) || 0 : null, 
+          expected: sysData[i][3] !== "" && sysData[i][3] !== undefined ? parseInt(sysData[i][3]) || 0 : null, 
+          expectedRest: sysData[i][12] !== "" && sysData[i][12] !== undefined ? parseInt(sysData[i][12]) || 0 : null,
           remark: sysData[i][8] || "" 
         };
         sysSummary[rowDateStr]["豐谷"] = { 
-          expected: sysData[i][4] !== "" ? parseInt(sysData[i][4]) || 0 : null, 
+          expected: sysData[i][4] !== "" && sysData[i][4] !== undefined ? parseInt(sysData[i][4]) || 0 : null, 
+          expectedRest: sysData[i][13] !== "" && sysData[i][13] !== undefined ? parseInt(sysData[i][13]) || 0 : null,
           remark: sysData[i][9] || "" 
         };
       }
@@ -478,49 +518,81 @@ function sendWeeklyAuditReport() {
     for (const branch of branches) {
       tablesHtml += `<h3 style="color: #2c3e50; border-bottom: 2px solid #ddd; padding-bottom: 5px;">📍 ${branch}</h3>`;
       tablesHtml += `
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-family: sans-serif;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-family: sans-serif; font-size: 14px;">
           <thead>
             <tr style="background-color: #f8f9fa;">
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">日期</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">申報數</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">系統數</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">差異</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">稽核備註</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;" rowspan="2">日期</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: center;" colspan="3">住宿 (退+續)</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: center;" colspan="3">休息</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;" rowspan="2">稽核備註</th>
+            </tr>
+            <tr style="background-color: #f8f9fa;">
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: right; font-size: 12px; color: #555;">申報</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: right; font-size: 12px; color: #555;">系統</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: right; font-size: 12px; color: #555;">差異</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: right; font-size: 12px; color: #555;">申報</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: right; font-size: 12px; color: #555;">系統</th>
+              <th style="border: 1px solid #ddd; padding: 6px; text-align: right; font-size: 12px; color: #555;">差異</th>
             </tr>
           </thead>
           <tbody>
       `;
       
       for (const date of targetDates) {
-        const reported = reportSummary[date][branch];
+        const reportedObj = reportSummary[date][branch];
+        const reportedStay = reportedObj.stayTotal;
+        const reportedRest = reportedObj.restTotal;
+        
         const expectedObj = sysSummary[date][branch];
-        const expected = expectedObj.expected;
+        const expectedStay = expectedObj.expected;
+        const expectedRest = expectedObj.expectedRest;
         const remark = expectedObj.remark;
         
-        let diffStr = "-";
+        let diffStayStr = "-";
+        let diffRestStr = "-";
         let rowStyle = "";
+        let rowHasDiff = false;
         
-        if (expected !== null) {
-          const diff = reported - expected;
+        if (expectedStay !== null) {
+          const diff = reportedStay - expectedStay;
           if (diff > 0) {
-            diffStr = `<span style="color: #C06C61; font-weight: bold;">+${diff}</span>`;
-            rowStyle = "background-color: #FDF3F2;"; // 淺粉紅
-            diffCount++;
+            diffStayStr = `<span style="color: #C06C61; font-weight: bold;">+${diff}</span>`;
+            rowHasDiff = true;
           } else if (diff < 0) {
-            diffStr = `<span style="color: #B59341; font-weight: bold;">${diff}</span>`;
-            rowStyle = "background-color: #FDF7E7;"; // 淺黃色
-            diffCount++;
+            diffStayStr = `<span style="color: #B59341; font-weight: bold;">${diff}</span>`;
+            rowHasDiff = true;
           } else {
-            diffStr = "0";
+            diffStayStr = "0";
           }
+        }
+        
+        if (expectedRest !== null) {
+          const diff = reportedRest - expectedRest;
+          if (diff > 0) {
+            diffRestStr = `<span style="color: #C06C61; font-weight: bold;">+${diff}</span>`;
+            rowHasDiff = true;
+          } else if (diff < 0) {
+            diffRestStr = `<span style="color: #B59341; font-weight: bold;">${diff}</span>`;
+            rowHasDiff = true;
+          } else {
+            diffRestStr = "0";
+          }
+        }
+
+        if (rowHasDiff) {
+            rowStyle = "background-color: #FDF3F2;"; // 有差異整列標紅底
+            diffCount++;
         }
         
         tablesHtml += `
           <tr style="${rowStyle}">
             <td style="border: 1px solid #ddd; padding: 8px;">${date}</td>
-            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${reported}</td>
-            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${expected !== null ? expected : '-'}</td>
-            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${diffStr}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${reportedStay}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${expectedStay !== null ? expectedStay : '-'}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right; background-color: rgba(0,0,0,0.02);">${diffStayStr}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${reportedRest}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${expectedRest !== null ? expectedRest : '-'}</td>
+            <td style="border: 1px solid #ddd; padding: 8px; text-align: right; background-color: rgba(0,0,0,0.02);">${diffRestStr}</td>
             <td style="border: 1px solid #ddd; padding: 8px;">${remark}</td>
           </tr>
         `;
