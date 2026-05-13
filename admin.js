@@ -80,6 +80,12 @@ window.onGoogleLibraryLoad = function () {
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    // 設置總資料庫連結
+    const mainDbBtn = document.getElementById('mainDbBtn');
+    if (mainDbBtn && typeof CONFIG !== 'undefined' && CONFIG.MAIN_DB_URL) {
+        mainDbBtn.href = CONFIG.MAIN_DB_URL;
+    }
+
     const logoutBtn = document.getElementById('logoutBtn');
     const fetchDataBtn = document.getElementById('fetchDataBtn');
     const fetchHistoryBtn = document.getElementById('fetchHistoryBtn'); // 歷史調閱按鈕
@@ -487,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             card.innerHTML = `
                 <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>${targetDate} - ${branch}</span>
+                    <span>${targetDate} - <a href="${CONFIG.SHEET_URLS && CONFIG.SHEET_URLS[branch] ? CONFIG.SHEET_URLS[branch] : '#'}" target="_blank" class="branch-link-btn">${branch}</a></span>
                     <button class="details-btn btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.85rem;" data-branch="${branch}">詳細資訊</button>
                 </div>
                 <div class="stat-row">
@@ -609,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
             historyHtml += `
                 <div class="history-group">
                     <div class="history-group-title">
-                        【${branch}】 歷史紀錄明細
+                        【<a href="${CONFIG.SHEET_URLS && CONFIG.SHEET_URLS[branch] ? CONFIG.SHEET_URLS[branch] : '#'}" target="_blank" style="color: white; text-decoration: underline; background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px;">${branch}</a>】 歷史紀錄明細
                         ${matchStatusHtml}
                     </div>
                     ${auditRemark ? `

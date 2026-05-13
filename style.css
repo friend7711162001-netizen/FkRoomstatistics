@@ -659,3 +659,45 @@ button:active {
         grid-template-columns: 1fr;
     }
 }
+
+/* 館別連結按鈕 */
+.branch-link-btn {
+    display: inline-block;
+    padding: 4px 12px;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: var(--transition);
+    margin-left: 4px;
+}
+
+.branch-link-btn:hover {
+    background-color: var(--primary-hover);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(139, 163, 158, 0.3);
+}
+
+/* 總資料庫連結按鈕 */
+.db-link-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    background-color: var(--secondary-color);
+    color: var(--text-main);
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.db-link-btn:hover {
+    background-color: #C6BAAF;
+    color: var(--text-main);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}

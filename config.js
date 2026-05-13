@@ -9,5 +9,16 @@ const CONFIG = {
     
     // 管理員可授權的 Email 列表 (選填，若留空則不限制特定 Google 帳號，只要有登入即可看)
     // 範例: ["admin@example.com", "manager@example.com"]
-    ALLOWED_ADMIN_EMAILS: []
+    ALLOWED_ADMIN_EMAILS: [],
+    
+    // 各館別的 Google Sheet 連結 (請將 # 替換為實際的試算表網址)
+    SHEET_URLS: {
+        "雅霖": "https://docs.google.com/spreadsheets/d/1o1AuN5hJVC2PjXO1EEFQuBiaJXEv1S33WYz9gJ68JDw/",
+        "豐家": "https://docs.google.com/spreadsheets/d/1N3H-UZwBpJmHrjTaatu-JKAN_eCyrKrO_iL8GwT21KM/",
+        "豐國": "https://docs.google.com/spreadsheets/d/1pl9pYDFCO54ZETNAHlwOM9pLr60vLLpOR1370w2DjKs/",
+        "豐谷": "https://docs.google.com/spreadsheets/d/1uUKvKzCleBshG1QZ9SdiNbVwso-u1RQwNtovamTv8j8/"
+    },
+
+    // 總資料庫 Google Sheet 連結 (請將 # 替換為實際的試算表網址)
+    MAIN_DB_URL: "https://docs.google.com/spreadsheets/d/1ykBxFGMRZ3AUq8em00_2xDKLJT4kt7zp4tbmIFjIyGo/"
 };
