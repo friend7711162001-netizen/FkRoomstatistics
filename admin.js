@@ -86,6 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
         mainDbBtn.href = CONFIG.MAIN_DB_URL;
     }
 
+    // 設置旅宿E館家連結
+    const eHotelBtn = document.getElementById('eHotelBtn');
+    if (eHotelBtn && typeof CONFIG !== 'undefined' && CONFIG.E_HOTEL_URL) {
+        eHotelBtn.href = CONFIG.E_HOTEL_URL;
+    }
+
     const logoutBtn = document.getElementById('logoutBtn');
     const fetchDataBtn = document.getElementById('fetchDataBtn');
     const fetchHistoryBtn = document.getElementById('fetchHistoryBtn'); // 歷史調閱按鈕

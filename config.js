@@ -20,5 +20,8 @@ const CONFIG = {
     },
 
     // 總資料庫 Google Sheet 連結 (請將 # 替換為實際的試算表網址)
-    MAIN_DB_URL: "https://docs.google.com/spreadsheets/d/1ykBxFGMRZ3AUq8em00_2xDKLJT4kt7zp4tbmIFjIyGo/"
+    MAIN_DB_URL: "https://docs.google.com/spreadsheets/d/1ykBxFGMRZ3AUq8em00_2xDKLJT4kt7zp4tbmIFjIyGo/",
+
+    // 旅宿E館家 連結 (請將 # 替換為實際的網址)
+    E_HOTEL_URL: "https://www.bbnet.com.tw/yaling/admin/"
 };
