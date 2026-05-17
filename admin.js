@@ -202,6 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span>退房: <b>${row.checkoutRooms}</b></span>
                         <span>續住: <b>${row.stayRooms}</b></span>
                         <span>休息: <b>${row.restRooms}</b></span>
+                        <span style="color: #A0B6A5;">未整: <b>${row.uncleanedRooms || 0}</b></span>
                     </div>
                     ${row.remarks ? `<div style="font-size: 0.9rem; color: var(--text-main); background: #fff; padding: 8px; border-radius: 8px; margin-top: 8px;"><b>備註：</b>${row.remarks}</div>` : ''}
                 </div>`;
@@ -345,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return; // 中止並提示
                 }
 
-                renderResults(data.data, targetDate, data.expected, data.expectedRest, data.remarks);
+                renderResults(data.data, targetDate, data.expected, data.expectedRest, data.remarks, data.yesterdayUncleaned);
             } else {
                 throw new Error(data.message || '取得資料失敗');
             }
@@ -374,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
 
             if (data.status === 'success') {
-                renderHistory(data.data, data.remarks, data.expected, data.expectedRest);
+                renderHistory(data.data, data.remarks, data.expected, data.expectedRest, data.yesterdayUncleaned);
             } else {
                 throw new Error(data.message || '取得資料失敗');
             }
@@ -386,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function renderResults(records, targetDate, expectedData, expectedRestData, expectedRemarksData) {
+    function renderResults(records, targetDate, expectedData, expectedRestData, expectedRemarksData, yesterdayUncleanedData) {
         // 取得預期數值
         const expected = expectedData || {
             "雅霖": "",
@@ -409,13 +410,17 @@ document.addEventListener('DOMContentLoaded', () => {
             "豐谷": ""
         };
 
+        const yesterdayUncleaned = yesterdayUncleanedData || {
+            "雅霖": 0, "豐家": 0, "豐國": 0, "豐谷": 0
+        };
+
         // 預期的館別
         const branches = ["雅霖", "豐家", "豐國", "豐谷"];
         
         // 初始化統計物件
         const stats = {};
         branches.forEach(b => {
-            stats[b] = { checkout: 0, stay: 0, rest: 0, rawData: [] };
+            stats[b] = { checkout: 0, stay: 0, rest: 0, uncleaned: 0, rawData: [] };
         });
 
         // 加總資料 (備註：試算表日期格式可能會略有不同，若 GAS 有統一回傳 YYYY-MM-DD 比較好比對，
@@ -426,6 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 stats[branch].checkout += parseInt(row.checkoutRooms) || 0;
                 stats[branch].stay += parseInt(row.stayRooms) || 0;
                 stats[branch].rest += parseInt(row.restRooms) || 0;
+                stats[branch].uncleaned += parseInt(row.uncleanedRooms) || 0;
                 stats[branch].rawData.push(row);
             } else {
                 // 若出現非預期館別，動態新增
@@ -433,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     checkout: parseInt(row.checkoutRooms) || 0, 
                     stay: parseInt(row.stayRooms) || 0, 
                     rest: parseInt(row.restRooms) || 0,
+                    uncleaned: parseInt(row.uncleanedRooms) || 0,
                     rawData: [row]
                 };
             }
@@ -455,9 +462,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const expectRestStr = expectedRest[branch];
             const totalStay = data.checkout + data.stay;
             const totalRest = data.rest;
+            const uncleanedRooms = data.uncleaned;
+            const yUncleaned = yesterdayUncleaned[branch] || 0;
 
             if (expectStr !== "") {
-                const expectNum = parseInt(expectStr) || 0;
+                let expectNum = parseInt(expectStr) || 0;
+                // 套用留房未整邏輯
+                expectNum = expectNum - uncleanedRooms + yUncleaned;
+
                 if (totalStay > expectNum) {
                     cardClasses += ' error-card';
                     warningHtml += `
@@ -494,6 +506,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            // UI display for uncleaned adjustment
+            let uncleanedInfoHtml = '';
+            if (uncleanedRooms > 0 || yUncleaned > 0) {
+                let textSegments = [];
+                if (uncleanedRooms > 0) textSegments.push(`本日留房未整: -${uncleanedRooms}`);
+                if (yUncleaned > 0) textSegments.push(`昨日留房未整: +${yUncleaned}`);
+                uncleanedInfoHtml = `<div style="font-size: 0.85rem; color: #8BA39E; font-weight: 600; text-align: right; margin-bottom: 8px;">ℹ️ 系統間數調整 (${textSegments.join(', ')})</div>`;
+            }
+
             const card = document.createElement('div');
             card.className = cardClasses;
             
@@ -502,6 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span>${targetDate} - <a href="${CONFIG.SHEET_URLS && CONFIG.SHEET_URLS[branch] ? CONFIG.SHEET_URLS[branch] : '#'}" target="_blank" class="branch-link-btn">${branch}</a></span>
                     <button class="details-btn btn-secondary" style="width: auto; padding: 6px 12px; font-size: 0.85rem;" data-branch="${branch}">詳細資訊</button>
                 </div>
+                ${uncleanedInfoHtml}
                 <div class="stat-row">
                     <span class="stat-label">退房間數</span>
                     <span class="stat-value">${data.checkout} 間</span>
@@ -510,9 +532,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="stat-label">續住間數</span>
                     <span class="stat-value">${data.stay} 間</span>
                 </div>
-                <div class="stat-row" style="border-bottom: 1px dashed var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
+                <div class="stat-row">
                     <span class="stat-label">休息間數</span>
                     <span class="stat-value">${data.rest} 間</span>
+                </div>
+                <div class="stat-row" style="border-bottom: 1px dashed var(--border-color); padding-bottom: 12px; margin-bottom: 12px;">
+                    <span class="stat-label" style="color: #A0B6A5;">留房未整</span>
+                    <span class="stat-value" style="color: #A0B6A5;">${data.uncleaned} 間</span>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label" style="font-weight: 600; color: var(--text-main);">總計間數</span>
@@ -543,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 渲染歷史調閱分頁 (依照館別分組)
-    function renderHistory(records, auditRemarksData, expectedData, expectedRestData) {
+    function renderHistory(records, auditRemarksData, expectedData, expectedRestData, yesterdayUncleanedData) {
         if (records.length === 0) {
             historyContainer.innerHTML = `
                 <div class="no-data">
@@ -553,6 +579,10 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             return;
         }
+
+        const yesterdayUncleaned = yesterdayUncleanedData || {
+            "雅霖": 0, "豐家": 0, "豐國": 0, "豐谷": 0
+        };
 
         const branches = ["雅霖", "豐家", "豐國", "豐谷"];
         const groupedData = {};
@@ -581,8 +611,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 acc.checkout += parseInt(r.checkoutRooms) || 0;
                 acc.stay += parseInt(r.stayRooms) || 0;
                 acc.rest += parseInt(r.restRooms) || 0;
+                acc.uncleaned += parseInt(r.uncleanedRooms) || 0;
                 return acc;
-            }, { checkout: 0, stay: 0, rest: 0 });
+            }, { checkout: 0, stay: 0, rest: 0, uncleaned: 0 });
 
             // 產生該館別的區塊
             const auditRemark = (auditRemarksData && auditRemarksData[branch]) ? auditRemarksData[branch] : "";
@@ -591,18 +622,24 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const totalStay = branchTotal.checkout + branchTotal.stay;
             const totalRest = branchTotal.rest;
+            const totalUncleaned = branchTotal.uncleaned;
+            const yUncleaned = yesterdayUncleaned[branch] || 0;
 
             let matchStatusHtml = '';
             
             // 住宿比對
             if (expectedCount !== "") {
-                const expNum = parseInt(expectedCount) || 0;
+                let expNum = parseInt(expectedCount) || 0;
+                
+                // 套用留房未整邏輯
+                expNum = expNum - totalUncleaned + yUncleaned;
+
                 if (totalStay > expNum) {
-                    matchStatusHtml += `<div style="color: #C06C61; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF3F2; padding: 4px 8px; border-radius: 4px; margin-right: 4px;">⚠️ 系統間數: ${expNum} (住宿多 ${totalStay - expNum} 間)</div>`;
+                    matchStatusHtml += `<div style="color: #C06C61; font-size: 0.9rem; display: inline-block; background: #FDF3F2; padding: 4px 8px; border-radius: 4px;">⚠️ 系統間數: ${expNum} (住宿多 ${totalStay - expNum} 間)</div>`;
                 } else if (totalStay < expNum) {
-                    matchStatusHtml += `<div style="color: #B59341; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF7E7; padding: 4px 8px; border-radius: 4px; margin-right: 4px;">⚠️ 系統間數: ${expNum} (住宿少 ${expNum - totalStay} 間)</div>`;
+                    matchStatusHtml += `<div style="color: #B59341; font-size: 0.9rem; display: inline-block; background: #FDF7E7; padding: 4px 8px; border-radius: 4px;">⚠️ 系統間數: ${expNum} (住宿少 ${expNum - totalStay} 間)</div>`;
                 } else {
-                    matchStatusHtml += `<div style="color: #52796f; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #f0f4f3; padding: 4px 8px; border-radius: 4px; margin-right: 4px;">✓ 住宿符合: ${expNum}</div>`;
+                    matchStatusHtml += `<div style="color: #52796f; font-size: 0.9rem; display: inline-block; background: #f0f4f3; padding: 4px 8px; border-radius: 4px;">✓ 住宿符合: ${expNum}</div>`;
                 }
             }
             
@@ -610,19 +647,30 @@ document.addEventListener('DOMContentLoaded', () => {
             if (expectedRestCount !== "") {
                 const expRestNum = parseInt(expectedRestCount) || 0;
                 if (totalRest > expRestNum) {
-                    matchStatusHtml += `<div style="color: #C06C61; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF3F2; padding: 4px 8px; border-radius: 4px;">⚠️ 系統休數: ${expRestNum} (休息多 ${totalRest - expRestNum} 間)</div>`;
+                    matchStatusHtml += `<div style="color: #C06C61; font-size: 0.9rem; display: inline-block; background: #FDF3F2; padding: 4px 8px; border-radius: 4px;">⚠️ 系統休數: ${expRestNum} (休息多 ${totalRest - expRestNum} 間)</div>`;
                 } else if (totalRest < expRestNum) {
-                    matchStatusHtml += `<div style="color: #B59341; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #FDF7E7; padding: 4px 8px; border-radius: 4px;">⚠️ 系統休數: ${expRestNum} (休息少 ${expRestNum - totalRest} 間)</div>`;
+                    matchStatusHtml += `<div style="color: #B59341; font-size: 0.9rem; display: inline-block; background: #FDF7E7; padding: 4px 8px; border-radius: 4px;">⚠️ 系統休數: ${expRestNum} (休息少 ${expRestNum - totalRest} 間)</div>`;
                 } else {
-                    matchStatusHtml += `<div style="color: #52796f; font-size: 0.9rem; margin-top: 8px; display: inline-block; background: #f0f4f3; padding: 4px 8px; border-radius: 4px;">✓ 休息符合: ${expRestNum}</div>`;
+                    matchStatusHtml += `<div style="color: #52796f; font-size: 0.9rem; display: inline-block; background: #f0f4f3; padding: 4px 8px; border-radius: 4px;">✓ 休息符合: ${expRestNum}</div>`;
                 }
             }
             
+            let uncleanedInfoHtml = '';
+            if (totalUncleaned > 0 || yUncleaned > 0) {
+                let textSegments = [];
+                if (totalUncleaned > 0) textSegments.push(`本日未整: -${totalUncleaned}`);
+                if (yUncleaned > 0) textSegments.push(`昨日未整: +${yUncleaned}`);
+                uncleanedInfoHtml = `<div style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.9); font-weight: 500;">ℹ️ 系統間數調整 (${textSegments.join(', ')})</div>`;
+            }
+
             historyHtml += `
                 <div class="history-group">
-                    <div class="history-group-title">
-                        【<a href="${CONFIG.SHEET_URLS && CONFIG.SHEET_URLS[branch] ? CONFIG.SHEET_URLS[branch] : '#'}" target="_blank" style="color: white; text-decoration: underline; background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px;">${branch}</a>】 歷史紀錄明細
-                        ${matchStatusHtml}
+                    <div class="history-group-title" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                            <div>【<a href="${CONFIG.SHEET_URLS && CONFIG.SHEET_URLS[branch] ? CONFIG.SHEET_URLS[branch] : '#'}" target="_blank" style="color: white; text-decoration: underline; background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px;">${branch}</a>】 歷史紀錄明細</div>
+                            <div style="display: flex; gap: 4px; flex-wrap: wrap;">${matchStatusHtml}</div>
+                        </div>
+                        ${uncleanedInfoHtml}
                     </div>
                     ${auditRemark ? `
                     <div style="background: #fff9e6; border: 1px solid #ffe58f; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; font-size: 0.95rem; color: #856404;">
@@ -636,6 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <th class="cell-num">退房</th>
                                     <th class="cell-num">續住</th>
                                     <th class="cell-num">休息</th>
+                                    <th class="cell-num">未整</th>
                                     <th>備註</th>
                                     <th>上傳時間</th>
                                 </tr>
@@ -647,6 +696,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <td class="cell-num">${r.checkoutRooms}</td>
                                         <td class="cell-num">${r.stayRooms}</td>
                                         <td class="cell-num">${r.restRooms}</td>
+                                        <td class="cell-num" style="color: #A0B6A5;">${r.uncleanedRooms || 0}</td>
                                         <td class="cell-remarks">${r.remarks || '-'}</td>
                                         <td class="cell-time">${formatDateTime(r.uploadTime)}</td>
                                     </tr>
@@ -658,6 +708,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <td class="cell-num">${branchTotal.checkout}</td>
                                     <td class="cell-num">${branchTotal.stay}</td>
                                     <td class="cell-num">${branchTotal.rest}</td>
+                                    <td class="cell-num" style="color: #A0B6A5;">${branchTotal.uncleaned}</td>
                                     <td colspan="2"></td>
                                 </tr>
                                 <tr style="background-color: var(--bg-color);">

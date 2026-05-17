@@ -264,8 +264,21 @@ function doGet(e) {
       }
       
       const data = sheet.getDataRange().getValues();
+      
+      let yesterdayStr = "";
+      if (targetDate) {
+        const parts = targetDate.split("-");
+        if (parts.length === 3) {
+          const tDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          tDate.setDate(tDate.getDate() - 1);
+          yesterdayStr = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}-${String(tDate.getDate()).padStart(2, '0')}`;
+        }
+      }
+      
+      let yesterdayUncleaned = { "雅霖": 0, "豐家": 0, "豐國": 0, "豐谷": 0 };
+
       if (data.length <= 1) {
-        return createJsonResponse({ status: 'success', data: [], expected: expectedCounts, expectedRest: expectedRestCounts, remarks: expectedRemarks });
+        return createJsonResponse({ status: 'success', data: [], expected: expectedCounts, expectedRest: expectedRestCounts, remarks: expectedRemarks, yesterdayUncleaned: yesterdayUncleaned });
       }
       
       const headers = data[0]; // [申報日期, 館別, 姓名, 退房間數, 續住間數, 休息間數, 備註欄, 上傳時間]
@@ -283,21 +296,28 @@ function doGet(e) {
           rowDateStr = String(row[0]).trim();
         }
 
+        const branch = String(row[1]).trim();
+        
+        if (rowDateStr === yesterdayStr && yesterdayUncleaned[branch] !== undefined) {
+          yesterdayUncleaned[branch] += (parseInt(row[8]) || 0);
+        }
+
         if (rowDateStr === targetDate) {
           results.push({
             reportDate: rowDateStr,
-            branch: row[1],
+            branch: branch,
             staffName: row[2],
             checkoutRooms: row[3],
             stayRooms: row[4],
             restRooms: row[5],
             remarks: row[6],
-            uploadTime: row[7]
+            uploadTime: row[7],
+            uncleanedRooms: parseInt(row[8]) || 0
           });
         }
       }
       
-      return createJsonResponse({ status: 'success', data: results, expected: expectedCounts, expectedRest: expectedRestCounts, remarks: expectedRemarks });
+      return createJsonResponse({ status: 'success', data: results, expected: expectedCounts, expectedRest: expectedRestCounts, remarks: expectedRemarks, yesterdayUncleaned: yesterdayUncleaned });
     }
     
     return createJsonResponse({ status: 'error', message: '無效的操作' });
@@ -322,7 +342,7 @@ function doPost(e) {
         return createJsonResponse({ status: 'error', message: '找不到名稱為「資料庫」的工作表' });
       }
       
-      // 確保欄位順序：申報日期, 館別, 姓名, 退房間數, 續住間數, 休息間數, 備註欄, 上傳時間
+      // 確保欄位順序：申報日期, 館別, 姓名, 退房間數, 續住間數, 休息間數, 備註欄, 上傳時間, 留房未整
       const rowData = [
         data.reportDate,
         data.branch,
@@ -331,7 +351,8 @@ function doPost(e) {
         data.stayRooms,
         data.restRooms,
         data.remarks,
-        data.uploadTime
+        data.uploadTime,
+        data.uncleanedRooms || ""
       ];
       
       if (data.overwrite) {
@@ -428,14 +449,28 @@ function sendWeeklyAuditReport() {
     }
 
     // 3. 讀取 [資料庫] 計算申報總數
-    // 結構: date -> branch -> { stayTotal, restTotal }
+    // 結構: date -> branch -> { stayTotal, restTotal, uncleanedTotal }
     const reportSummary = {};
+    
+    // Add preFirstDate to calculate yesterdayUncleaned for the first targetDate
+    const firstDateParts = targetDates[0].split('-');
+    const preFirstDate = new Date(parseInt(firstDateParts[0]), parseInt(firstDateParts[1]) - 1, parseInt(firstDateParts[2]));
+    preFirstDate.setDate(preFirstDate.getDate() - 1);
+    const preFirstDateStr = `${preFirstDate.getFullYear()}-${String(preFirstDate.getMonth() + 1).padStart(2, '0')}-${String(preFirstDate.getDate()).padStart(2, '0')}`;
+    
+    reportSummary[preFirstDateStr] = {
+      "雅霖": { stayTotal: 0, restTotal: 0, uncleanedTotal: 0 }, 
+      "豐家": { stayTotal: 0, restTotal: 0, uncleanedTotal: 0 }, 
+      "豐國": { stayTotal: 0, restTotal: 0, uncleanedTotal: 0 }, 
+      "豐谷": { stayTotal: 0, restTotal: 0, uncleanedTotal: 0 }
+    };
+
     targetDates.forEach(date => {
       reportSummary[date] = { 
-        "雅霖": { stayTotal: 0, restTotal: 0 }, 
-        "豐家": { stayTotal: 0, restTotal: 0 }, 
-        "豐國": { stayTotal: 0, restTotal: 0 }, 
-        "豐谷": { stayTotal: 0, restTotal: 0 } 
+        "雅霖": { stayTotal: 0, restTotal: 0, uncleanedTotal: 0 }, 
+        "豐家": { stayTotal: 0, restTotal: 0, uncleanedTotal: 0 }, 
+        "豐國": { stayTotal: 0, restTotal: 0, uncleanedTotal: 0 }, 
+        "豐谷": { stayTotal: 0, restTotal: 0, uncleanedTotal: 0 } 
       };
     });
     
@@ -449,15 +484,19 @@ function sendWeeklyAuditReport() {
         rowDateStr = String(row[0]).trim();
       }
       
-      if (targetDates.includes(rowDateStr)) {
+      if (targetDates.includes(rowDateStr) || rowDateStr === preFirstDateStr) {
         const branch = String(row[1]).trim();
         const checkout = parseInt(row[3]) || 0;
         const stay = parseInt(row[4]) || 0;
         const rest = parseInt(row[5]) || 0;
+        const uncleaned = parseInt(row[8]) || 0;
         
         if (reportSummary[rowDateStr] && reportSummary[rowDateStr][branch] !== undefined) {
-          reportSummary[rowDateStr][branch].stayTotal += (checkout + stay);
-          reportSummary[rowDateStr][branch].restTotal += rest;
+          if (targetDates.includes(rowDateStr)) {
+            reportSummary[rowDateStr][branch].stayTotal += (checkout + stay);
+            reportSummary[rowDateStr][branch].restTotal += rest;
+          }
+          reportSummary[rowDateStr][branch].uncleanedTotal += uncleaned;
         }
       }
     }
@@ -544,7 +583,21 @@ function sendWeeklyAuditReport() {
         const reportedRest = reportedObj.restTotal;
         
         const expectedObj = sysSummary[date][branch];
-        const expectedStay = expectedObj.expected;
+        const expectedStayRaw = expectedObj.expected;
+        
+        // 取得前一日的日期字串
+        const dateParts = date.split('-');
+        const yesterday = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+        
+        let expectedStay = expectedStayRaw;
+        if (expectedStayRaw !== null) {
+            const todayUncleaned = reportedObj.uncleanedTotal || 0;
+            const yesterdayUncleaned = reportSummary[yesterdayStr] ? reportSummary[yesterdayStr][branch].uncleanedTotal : 0;
+            expectedStay = expectedStayRaw - todayUncleaned + yesterdayUncleaned;
+        }
+
         const expectedRest = expectedObj.expectedRest;
         const remark = expectedObj.remark;
         

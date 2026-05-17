@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
             checkoutRooms: document.getElementById('checkoutRooms').value || 0,
             stayRooms: document.getElementById('stayRooms').value || 0,
             restRooms: document.getElementById('restRooms').value || 0,
+            uncleanedRooms: document.getElementById('uncleanedRooms').value || 0,
             remarks: document.getElementById('remarks').value,
             uploadTime: uploadTime
         };
@@ -99,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('checkoutRooms').value = '';
             document.getElementById('stayRooms').value = '';
             document.getElementById('restRooms').value = '';
+            document.getElementById('uncleanedRooms').value = '';
             document.getElementById('remarks').value = '';
 
         } catch (error) {

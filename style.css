@@ -87,6 +87,17 @@ header p {
     font-size: 0.95rem;
 }
 
+.form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.form-row .form-group {
+    margin-bottom: 0;
+    flex: 1;
+}
+
 .form-group {
     margin-bottom: 20px;
 }
