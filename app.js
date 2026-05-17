@@ -7,6 +7,100 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModalBtn = document.getElementById('closeModalBtn');
     const loadingOverlay = document.getElementById('loadingOverlay');
 
+    // --- 國際化 (i18n) 設定 ---
+    const langToggleBtn = document.getElementById('langToggleBtn');
+    
+    const translations = {
+        "zh-TW": {
+            title: "集團間數申報",
+            subtitle: "請確實填寫今日實際整理房間數據，<br>未整理請填寫在[留房未整]。<br>如今日有整理不同館別，請分開申報。",
+            reportDate: "申報日期",
+            branch: "館別",
+            branchSelect: "請選擇館別",
+            yaling: "雅霖",
+            fengjia: "豐家",
+            fengguo: "豐國",
+            fenggu: "豐谷",
+            staffName: "姓名",
+            staffNamePlaceholder: "請輸入您的姓名",
+            checkoutRooms: "退房間數",
+            stayRooms: "續住間數",
+            restRooms: "休息間數",
+            uncleanedRooms: "留房未整",
+            remarks: "備註欄",
+            remarksPlaceholder: "選填...",
+            submitBtn: "送出申報",
+            successTitle: "申報成功",
+            successMsg: "辛苦了！",
+            closeBtn: "關閉",
+            loadingMsg: "處理中..."
+        },
+        "en": {
+            title: "Room Reporting",
+            subtitle: "Please accurately fill in today's actual cleaned room data.<br>If not cleaned, please fill it in [Uncleaned].<br>If you cleaned different branches, report them separately.",
+            reportDate: "Report Date",
+            branch: "Branch",
+            branchSelect: "Select a branch",
+            yaling: "Yaling",
+            fengjia: "Foungjia",
+            fengguo: "Foungkou",
+            fenggu: "Founggu",
+            staffName: "Name",
+            staffNamePlaceholder: "Enter your name",
+            checkoutRooms: "Checkout",
+            stayRooms: "Stay",
+            restRooms: "Rest",
+            uncleanedRooms: "Uncleaned",
+            remarks: "Remarks",
+            remarksPlaceholder: "Optional...",
+            submitBtn: "Submit",
+            successTitle: "Success",
+            successMsg: "Good job!",
+            closeBtn: "Close",
+            loadingMsg: "Processing..."
+        }
+    };
+
+    let currentLang = localStorage.getItem('fk_room_lang') || 'zh-TW';
+
+    function applyTranslations(lang) {
+        document.documentElement.lang = lang;
+        if (langToggleBtn) {
+            langToggleBtn.textContent = lang === 'zh-TW' ? 'English' : '中文';
+        }
+        
+        const dict = translations[lang];
+        
+        // 翻譯內部文字 (使用 innerHTML 支援 <br>)
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (dict[key]) {
+                el.innerHTML = dict[key];
+            }
+        });
+
+        // 翻譯 placeholder
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            if (dict[key]) {
+                el.setAttribute('placeholder', dict[key]);
+            }
+        });
+    }
+
+    if (langToggleBtn) {
+        langToggleBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // 防止按鈕可能處於表單內而觸發提交
+            currentLang = currentLang === 'zh-TW' ? 'en' : 'zh-TW';
+            localStorage.setItem('fk_room_lang', currentLang);
+            applyTranslations(currentLang);
+        });
+    }
+
+    // 初始化語言
+    applyTranslations(currentLang);
+    // --- 國際化 (i18n) 設定結束 ---
+
     // 設定今天的日期為預設值
     const today = new Date();
     const yyyy = today.getFullYear();
