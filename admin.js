@@ -457,9 +457,9 @@ document.addEventListener('DOMContentLoaded', () => {
             let cardClasses = 'result-card';
             let warningHtml = '';
 
-            // 稽核判斷
-            const expectStr = expected[branch];
-            const expectRestStr = expectedRest[branch];
+            // 稽核判斷：只要當天有匯入系統總間數，未填寫的住宿或休息預估數在比對時一律預設為 "0"
+            const expectStr = (expected[branch] !== "" && expected[branch] !== undefined && expected[branch] !== null) ? String(expected[branch]) : "0";
+            const expectRestStr = (expectedRest[branch] !== "" && expectedRest[branch] !== undefined && expectedRest[branch] !== null) ? String(expectedRest[branch]) : "0";
             const totalStay = data.checkout + data.stay;
             const totalRest = data.rest;
             const uncleanedRooms = data.uncleaned;
@@ -617,8 +617,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 產生該館別的區塊
             const auditRemark = (auditRemarksData && auditRemarksData[branch]) ? auditRemarksData[branch] : "";
-            const expectedCount = (expectedData && expectedData[branch]) ? expectedData[branch] : "";
-            const expectedRestCount = (expectedRestData && expectedRestData[branch]) ? expectedRestData[branch] : "";
+            // 歷史調閱之稽核判斷：只要該日期有匯入系統總間數，未填寫的住宿或休息預估數在比對時一律預設為 "0"
+            const isImported = expectedData && (Object.values(expectedData).some(val => val !== "") || (expectedRestData && Object.values(expectedRestData).some(val => val !== "")));
+            const expectedCount = (expectedData && expectedData[branch] !== undefined && expectedData[branch] !== "") 
+                 ? String(expectedData[branch]) 
+                 : (isImported ? "0" : "");
+            const expectedRestCount = (expectedRestData && expectedRestData[branch] !== undefined && expectedRestData[branch] !== "") 
+                 ? String(expectedRestData[branch]) 
+                 : (isImported ? "0" : "");
             
             const totalStay = branchTotal.checkout + branchTotal.stay;
             const totalRest = branchTotal.rest;

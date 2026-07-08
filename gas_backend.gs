@@ -523,24 +523,25 @@ function sendWeeklyAuditReport() {
       }
       
       if (targetDates.includes(rowDateStr)) {
+        // 只要該日期有系統間數紀錄，未填寫的住宿與休息數（空字串或 undefined）在稽核時預設為 0
         sysSummary[rowDateStr]["雅霖"] = { 
-          expected: sysData[i][1] !== "" && sysData[i][1] !== undefined ? parseInt(sysData[i][1]) || 0 : null, 
-          expectedRest: sysData[i][10] !== "" && sysData[i][10] !== undefined ? parseInt(sysData[i][10]) || 0 : null,
+          expected: sysData[i][1] !== "" && sysData[i][1] !== undefined ? parseInt(sysData[i][1]) || 0 : 0, 
+          expectedRest: sysData[i][10] !== "" && sysData[i][10] !== undefined ? parseInt(sysData[i][10]) || 0 : 0,
           remark: sysData[i][6] || "" 
         };
         sysSummary[rowDateStr]["豐家"] = { 
-          expected: sysData[i][2] !== "" && sysData[i][2] !== undefined ? parseInt(sysData[i][2]) || 0 : null, 
-          expectedRest: sysData[i][11] !== "" && sysData[i][11] !== undefined ? parseInt(sysData[i][11]) || 0 : null,
+          expected: sysData[i][2] !== "" && sysData[i][2] !== undefined ? parseInt(sysData[i][2]) || 0 : 0, 
+          expectedRest: sysData[i][11] !== "" && sysData[i][11] !== undefined ? parseInt(sysData[i][11]) || 0 : 0,
           remark: sysData[i][7] || "" 
         };
         sysSummary[rowDateStr]["豐國"] = { 
-          expected: sysData[i][3] !== "" && sysData[i][3] !== undefined ? parseInt(sysData[i][3]) || 0 : null, 
-          expectedRest: sysData[i][12] !== "" && sysData[i][12] !== undefined ? parseInt(sysData[i][12]) || 0 : null,
+          expected: sysData[i][3] !== "" && sysData[i][3] !== undefined ? parseInt(sysData[i][3]) || 0 : 0, 
+          expectedRest: sysData[i][12] !== "" && sysData[i][12] !== undefined ? parseInt(sysData[i][12]) || 0 : 0,
           remark: sysData[i][8] || "" 
         };
         sysSummary[rowDateStr]["豐谷"] = { 
-          expected: sysData[i][4] !== "" && sysData[i][4] !== undefined ? parseInt(sysData[i][4]) || 0 : null, 
-          expectedRest: sysData[i][13] !== "" && sysData[i][13] !== undefined ? parseInt(sysData[i][13]) || 0 : null,
+          expected: sysData[i][4] !== "" && sysData[i][4] !== undefined ? parseInt(sysData[i][4]) || 0 : 0, 
+          expectedRest: sysData[i][13] !== "" && sysData[i][13] !== undefined ? parseInt(sysData[i][13]) || 0 : 0,
           remark: sysData[i][9] || "" 
         };
       }
